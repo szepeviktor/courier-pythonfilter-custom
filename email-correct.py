@@ -27,6 +27,9 @@ DEFAULT_CHARSET = 'ISO-8859-2'
 
 debug = False
 
+#TODO
+# unknown encoding: scz-1171-1 - check all .encode() and .decode()
+
 # Courier 0.60.0 /etc/courier/bofh
 #opt MIME=none
 #opt BOFHBADMIME=accept
