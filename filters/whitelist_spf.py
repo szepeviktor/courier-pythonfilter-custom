@@ -1,21 +1,21 @@
 #!/usr/bin/python
 # whitlist_spf -- Courier filter which checks SPF records using the "spf" module
-# Copyright (C) 2006  Gordon Messmer <gordon@dragonsdawn.net>
+# Copyright (C) 2007-2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-#
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 import courier.control
@@ -41,10 +41,8 @@ def doFilter(bodyFile, controlFileList):
         return ''
 
     helo = sendersMta.split(' ')[1]
-    results = spf.check(sendersIp, sender, helo)
-    # results are pass,deny,unknown
-    (decision, numeric, text) = results
-    if decision == 'pass':
+    (spfResult, spfExplanation) = spf.check2(sendersIp, sender, helo)
+    if spfResult == 'pass':
         return '200 Ok'
     return ''
 

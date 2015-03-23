@@ -1,8 +1,8 @@
 Metadata-Version: 1.0
 Name: courier-pythonfilter
-Version: 1.1
+Version: 1.2
 Summary: Python filtering architecture for the Courier MTA.
-Home-page: http://www.dragonsdawn.net/~gordon/courier-patches/courier-pythonfilter/
+Home-page: http://www.dragonsdawn.net/~gordon/courier-pythonfilter/
 Author: Gordon Messmer
 Author-email: gordon@dragonsdawn.net
 License: GPL

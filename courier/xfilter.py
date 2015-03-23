@@ -1,20 +1,21 @@
 #!/usr/bin/python
 # courier.xfilter -- python module for modifying messages in the queue
-# Copyright (C) 2006  Gordon Messmer <gordon@dragonsdawn.net>
+# Copyright (C) 2006-2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
@@ -84,14 +85,29 @@ class XFilter:
     When modifications are complete, call the XFilter object's submit
     method to insert the new message into the spool.  If there is an
     error submitting the modified message, xfilter.SubmitError will
-    be raised.  Otherwise, the modified message has been submitted,
-    and the recipients of the original message will be marked
-    complete.  If no exception is raised, return '050 Ok' to stop all
-    further filtering of the message by all courierfilters.  Because
-    modifying the message creates a new message in Courier's queue,
-    you must not reject a message that has been modified; it is no
-    longer possible to notify the sender that the message was
-    rejected.  Filters that modify messages should be run last.
+    be raised.
+    
+    The behavior and return value of the submit method will depend on
+    the version of Courier under which filters are used.  Under version
+    0.57.1 and prior versions, the recipients of the original message
+    will be marked complete, and a string value will be returned which
+    indicates to courier that no further filtering should be performed
+    by any courierfilters.  The string which is returned by the submit
+    method should be returned to pythonfilter by the filter which called
+    the submit method.  Because modifying the message creates a new
+    message in Courier's queue in these releases, you must not reject a
+    message that has been modified; it is no longer possible to notify
+    the sender that the message was rejected.  Filters that modify
+    messages should be run last.
+    
+    Under versions of Courier which support modifying the message's body
+    file in place, the submit function will do so and will not mark all
+    of the recipients complete.  Submit will return an empty string,
+    which should be returned to pythonfilter by the filter which called
+    the submit method.  Additional filters, if any are configured, will
+    continue to be called.  This is more efficient than earlier methods,
+    which would start filtering over from the beginning each time that
+    xfilter was used.
 
     """
     def __init__(self, filterName, bodyFile, controlFileList):
@@ -120,6 +136,10 @@ class XFilter:
 
     def getMessage(self):
         return self.message
+
+
+    def setMessage(self, message):
+        self.message = message
 
 
     def getControlData(self):
@@ -247,17 +267,36 @@ class XFilter:
         # message.
         for x in self.controlData['r']:
             courier.control.delRecipientData(self.controlFileList, x)
+        return '050 OK'
 
 
     def newSubmit(self):
-        bfo = open(self.bodyFile, 'w')
+        bfo = open(self.bodyFile, 'r+')
         g = email.generator.Generator(bfo, mangle_from_=False)
         g.flatten(self.message)
+        # Make sure that the file ends with a newline, or courier
+        # will choke on the new message file.
+        bfo.seek(-1, 2)
+        if bfo.read(1) != '\n':
+            bfo.seek(0, 2)
+            bfo.write('\n')
         bfo.close()
+        return ''
 
 
     def submit(self):
         if courier.config.isMinVersion('0.57.1'):
-            self.newSubmit()
+            return self.newSubmit()
         else:
-            self.oldSubmit()
+            return self.oldSubmit()
+
+
+class DummyXFilter(XFilter):
+    def oldSubmit(self):
+        return ''
+
+    def newSubmit(self):
+        return ''
+
+    def submit(self):
+        return ''

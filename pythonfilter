@@ -1,20 +1,21 @@
 #!/usr/bin/python
 # pythonfilter -- A python framework for Courier global filters
-# Copyright (C) 2006  Gordon Messmer <gordon@dragonsdawn.net>
+# Copyright (C) 2003-2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 """Use: filterctl start pythonfilter
 
@@ -34,6 +35,7 @@ import thread
 import time
 import traceback
 import courier.config
+import courier.control
 
 ##############################
 # Config Options
@@ -208,12 +210,28 @@ def processMessage(activeSocket):
         activeSocket.send('200 Ok')
     else:
         activeSocket.send(replyCode)
+        logFailCodes(i_filter[0], replyCode, controlFileList)
     # Acquire the lock and update the thread count.
     activeFiltersLock.acquire()
     global activeFilters
     activeFilters = activeFilters - 1
     activeFiltersLock.release()
     activeSocket.close()
+
+
+def logFailCodes(filter, replyCode, controlFileList):
+    # This function will not log the original list of recipients specified
+    # in the SMTP session.  The recipients logged are subject to alias
+    # expansion and also modification of the control files by filters.
+    try:
+        if not (replyCode.startswith('2') or replyCode.startswith('0')):
+            sender = courier.control.getSender(controlFileList)
+            for r in courier.control.getRecipients(controlFileList):
+                sys.stderr.write('pythonfilter %s reject,from=<%s>,addr=<%s>: %s\n' %
+                                 (filter, sender, r, replyCode))
+    except:
+        # Any error from the above code is ignored entirely
+        pass
 
 
 ##############################

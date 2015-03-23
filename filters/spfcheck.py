@@ -1,22 +1,22 @@
 #!/usr/bin/python
 # spfcheck -- Courier filter which checks SPF records using the "spf" module
-# Copyright (C) 2004  Jon Nelson <jnelson@jamponi.net>
+# Copyright (C) 2004-2008  Jon Nelson <jnelson@jamponi.net>
+# Copyright (C) 2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-#
-# License: GPL v2
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 import courier.control
@@ -29,32 +29,32 @@ def initFilter():
 
 
 def doFilter(bodyFile, controlFileList):
-    """Use the SPF mechanism to whitelist, blacklist, or graylist email.
-
-    blacklisted email is rejected, whitelisted email is accepted, and
-    greylisted email is accepted with a logline.  Currently, it's
-    probably far too optimistic to log greylisted.
-
-    """
+    """Use the SPF mechanism to blacklist email."""
     try:
-        senders_mta = courier.control.getSendersMta(controlFileList)
-        senders_ip = courier.control.getSendersIP(controlFileList)
+        sendersMta = courier.control.getSendersMta(controlFileList)
+        sendersIp = courier.control.getSendersIP(controlFileList)
         sender = courier.control.getSender(controlFileList)
     except:
         return '451 Internal failure locating control files'
 
-    # question: what if sender is '' or '<>' or '<@>' or '@' ??
-    helo = senders_mta.split(' ')[1]
-    results = spf.check(i=senders_ip, s=sender, h=helo)
-    # results are pass,deny,unknown
-    (decision, numeric, text) = results
-    if decision == 'pass':
+    # Don't waste time on DSNs.
+    if sender == '':
         return ''
-    elif decision == 'unknown':
-        sys.stderr.write('SPF returns "unknown" for %s,%s\n' % (senders_ip, sender,helo))
-        return ''
-    elif decision == 'deny':
+
+    helo = sendersMta.split(' ')[1]
+    (spfResult, spfExplanation) = spf.check2(sendersIp, sender, helo)
+    if spfResult == 'fail':
         return '517 SPF returns deny'
-    else:
-        sys.stderr.write('SPF returns "%s" which is not understood.\n' % (results))
-        return ''
+    return ''
+
+
+if __name__ == '__main__':
+    # Run this script with the name of a properly formatted control
+    # file as an argument, and it'll print either "517 SPF returns deny"
+    # to indicate that the sender is blacklisted, or nothing to
+    # indicate that the remaining filters would be run.
+    if not sys.argv[1:]:
+        print 'Use:  spfcheck.py <control file>'
+        sys.exit(1)
+    initFilter()
+    print doFilter('', sys.argv[1:])

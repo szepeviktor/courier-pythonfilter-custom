@@ -1,22 +1,23 @@
 #!/usr/bin/python
 # greylist -- Courier filter implementing a "greylisting" technique.
-# Copyright (C) 2006  Gordon Messmer <gordon@dragonsdawn.net>
-# Copyright (C) 2005  Mickael Marchand <marchand@kde.org>
-# Copyright (C) 2006  Georg Lutz <georg-list@georglutz.de>
+# Copyright (C) 2005-2008  Mickael Marchand <marchand@kde.org>
+# Copyright (C) 2006-2008  Georg Lutz <georg-list@georglutz.de>
+# Copyright (C) 2006-2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import anydbm
 import md5
@@ -43,7 +44,7 @@ sendersPassedTTL = 60 * 60 * 24 * 36
 sendersNotPassedTTL = 60 * 60 * 24 
 greylistTime = 300
 
-_whitelistDir = '/var/state/pythonfilter'
+_whitelistDir = '/var/lib/pythonfilter'
 
 _IPv4Regex = re.compile('^(\d+\.\d+\.\d+)\.\d+$')
 
@@ -62,7 +63,7 @@ def initFilter():
         _sendersPassed = TtlDb.TtlDb('greylist_Passed', sendersPassedTTL, sendersPurgeInterval)
         _sendersNotPassed = TtlDb.TtlDb('greylist_NotPassed', sendersNotPassedTTL, sendersPurgeInterval)
     except TtlDb.OpenError, e:
-        sys.stderr.write(e.message)
+        sys.stderr.write('Could not open greylist TtlDb: %s\n' % e)
         sys.exit(1)
 
     try:

@@ -1,27 +1,29 @@
 #!/usr/bin/python
 # courier.authdaemon -- python module for Courier's authdaemon
-# Copyright (C) 2007  Gordon Messmer <gordon@dragonsdawn.net>
+# Copyright (C) 2007-2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import errno
 import select
 import socket
+import courier.config
 
 
-_socketPath = '/var/spool/authdaemon/socket'
+socketPath = '/var/spool/authdaemon/socket'
 _timeoutSock = 10
 _timeoutWrite = 10
 _timeoutRead = 30
@@ -53,6 +55,10 @@ class KeyError(AuthDaemonError):
     pass
 
 
+def _setup():
+    courier.config.applyModuleConfig('authdaemon.py', globals())
+
+
 def _connect():
     try:
         authSock = socket.socket(socket.AF_UNIX)
@@ -60,7 +66,7 @@ def _connect():
         raise IoError('could not create socket')
     if _timeoutSock == 0:
         try:
-            authSock.connect(_socketPath)
+            authSock.connect(socketPath)
             authSock.setblocking(0)
         except socket.error:
             raise IoError('could not connect to authdaemon socket')
@@ -71,7 +77,7 @@ def _connect():
         # for errors with getsockopt.
         authSock.setblocking(0)
         try:
-            authSock.connect(_socketPath)
+            authSock.connect(socketPath)
         except socket.error, e:
             if e[0] != errno.EINPROGRESS:
                 raise IoError('connection failed, error: %d, "%s"' % (e[0], e[1]))
@@ -148,3 +154,7 @@ def getUserInfo(service, uid):
     cmd = 'PRE . %s %s\n' % (service, uid)
     userInfo = _doAuth(cmd)
     return userInfo
+
+
+# Call _setup to correct the socket path
+_setup()

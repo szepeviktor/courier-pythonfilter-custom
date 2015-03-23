@@ -1,20 +1,21 @@
 #!/usr/bin/python
 # dialback -- Courier filter which verifies sender addresses by contacting their MX
-# Copyright (C) 2006  Gordon Messmer <gordon@dragonsdawn.net>
+# Copyright (C) 2003-2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import DNS
 import errno
@@ -55,7 +56,7 @@ def initFilter():
         _goodSenders = TtlDb.TtlDb('goodsenders', sendersTTL, sendersPurgeInterval)
         _badSenders = TtlDb.TtlDb('badsenders', sendersTTL, sendersPurgeInterval)
     except TtlDb.OpenError, e:
-        sys.stderr.write(e.message)
+        sys.stderr.write('Could not open dialback TtlDb: %s\n' % e)
         sys.exit(1)
     # Initialize the DNS module
     DNS.DiscoverNameServers()

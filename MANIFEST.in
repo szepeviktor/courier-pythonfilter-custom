@@ -12,3 +12,4 @@ include COPYING
 include README
 include README.hacking
 include ChangeLog
+include courier-pythonfilter.spec

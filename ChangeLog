@@ -1,3 +1,142 @@
+2008-07-14 10:09  gordon
+
+	* courier-pythonfilter.spec, setup.py: Release 1.2
+
+2008-07-14 01:17  gordon
+
+	* filters/add_signature.py: Add two headers to the list of items
+	which shouldn't be moved when wrapping a message.
+
+2008-07-13 23:47  gordon
+
+	* README, courier-pythonfilter.spec, courier/quarantine.py,
+	filters/greylist.py, pythonfilter-modules.conf: Replace /var/state
+	with modern FHS compliant /var/lib
+
+2008-07-13 23:25  gordon
+
+	* filters/quota.py: Correct a bug where the result of
+	getRecipientsData was passed instead of the first element (the
+	recipient's address) as expected.
+
+2008-07-13 23:16  gordon
+
+	* filters/: spfcheck.py, whitelist_spf.py: Rewrite spfcheck.py
+	(though it remains deprecated) as a simple blacklist to remove
+	functional overlap with whitelist_spf.py.
+	
+	Both spfcheck.py and whitelist_spf.py were updated to the RFC
+	compliant API and proper return codes are now used.
+
+2008-07-07 00:13  gordon
+
+	* pythonfilter-modules.conf, courier/authdaemon.py: Correct errors
+	in previous authdaemon config patch.
+
+2008-07-06 23:54  gordon
+
+	* courier/config.py: Use RawConfigParser to avoid unwanted
+	interpolation, and log errors loading the module configuration
+	file.
+
+2008-06-11 14:32  gordon
+
+	* README, pythonfilter-modules.conf, courier/quarantine.py: Allow
+	quarantine notices to be turned off.
+
+2008-06-11 14:15  gordon
+
+	* pythonfilter-modules.conf, courier/authdaemon.py: Allow users to
+	specify the authdaemon socket location.
+
+2008-05-27 21:32  gordon
+
+	* courier/xfilter.py: Make sure that any message that passes
+	through xfilter ends with a newline character.	Messages without
+	newlines can't be delivered by courier's smtp client.
+
+2008-05-26 20:07  gordon
+
+	* README, pythonfilter.conf: Move the spamassassin module later in
+	the default list, after the more lightweight modules are run.
+
+2008-05-26 20:04  gordon
+
+	* pythonfilter-modules.conf, filters/spamassassin.py: Extend the
+	spamassassin module to allow better control over filtering, and to
+	allow the spamassassin headers to incoming messages.  This change
+	will allow the spamassassin filter to be used on a server which is
+	only a mail relay, and does not have any local accounts.
+
+2008-05-26 20:01  gordon
+
+	* courier/xfilter.py: Add dummy xfilter class to aid testing
+	modules.
+
+2008-05-26 19:53  gordon
+
+	* README.hacking: Fix xfilter example in the documentation.
+
+2008-05-26 18:15  gordon
+
+	* pythonfilter: Clean up reject log.
+
+2008-05-26 18:04  gordon
+
+	* pythonfilter: Log refused messages.
+
+2008-05-26 17:49  gordon
+
+	* README.hacking, courier/xfilter.py, filters/add_signature.py:
+	Update xfilter.submit() method and documentation to provide better
+	behavior for newer versions of Courier.
+
+2008-04-13 15:39  gordon
+
+	* filters/: auto_whitelist.py, comeagain.py, deliveredto.py,
+	dialback.py, greylist.py, quota.py: Fix up some exception handling
+	and logging.
+
+2008-03-23 01:06  gordon
+
+	* COPYING, pythonfilter, pythonfilter-quarantine,
+	courier/authdaemon.py, filters/TtlDb.py, filters/add_signature.py,
+	filters/attachments.py, filters/auto_whitelist.py,
+	filters/clamav.py, filters/comeagain.py, filters/debug.py,
+	filters/deliveredto.py, filters/dialback.py, filters/greylist.py,
+	filters/localsenders.py, filters/noduplicates.py,
+	filters/nosuccessdsn.py, filters/privateaddr.py, filters/quota.py,
+	filters/ratelimit.py, filters/spamassassin.py, filters/spfcheck.py,
+	filters/whitelist_auth.py, filters/whitelist_block.py,
+	filters/whitelist_dnswl.py, filters/whitelist_relayclients.py,
+	filters/whitelist_spf.py, tests/testconfig.py,
+	tests/testcontrol.py, tests/testmoduleconfig.py,
+	tests/testttldb.py, courier/config.py, courier/control.py,
+	courier/quarantine.py, courier/xfilter.py: Update copyright
+	information.
+
+2008-03-23 00:31  gordon
+
+	* courier-pythonfilter.spec, setup.py, MANIFEST.in: Import better
+	spec file than distutils creates.
+
+2008-03-20 23:57  gordon
+
+	* README, pythonfilter-modules.conf, pythonfilter.conf,
+	courier/xfilter.py, filters/add_signature.py: Add a filter that
+	will append a signature to messages sent by authenticated users. 
+	Logic for signature appending is probably very site-specific, so
+	many users should expect to use this filter as a template to write
+	their own.
+
+2008-03-20 23:47  gordon
+
+	* README, pythonfilter-modules.conf, pythonfilter-quarantine,
+	courier/quarantine.py, filters/clamav.py: Allow the quarantine
+	module to notify an administrative address in addition to
+	recipients of quarantined messages, and to give users the admin's
+	address rather than the release address.
+
 2008-03-19 21:03  gordon
 
 	* setup.py: Release 1.1

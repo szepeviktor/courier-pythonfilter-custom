@@ -1,20 +1,21 @@
 #!/usr/bin/python
 # quota -- Courier filter which checks recipients' quotas
-# Copyright (C) 2007  Gordon Messmer <gordon@dragonsdawn.net>
+# Copyright (C) 2007-2008  Gordon Messmer <gordon@dragonsdawn.net>
 #
-# This program is free software; you can redistribute it and/or modify
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
+# the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
+# pythonfilter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
@@ -43,10 +44,10 @@ def _checkQuota(addr):
     except courier.authdaemon.KeyError:
         # shouldn't happen if addr is local or hosted, and
         # courier accepted the address
-        sys.stderr.write('quota filter: authdaemon failed to look up "%s"' % addr)
+        sys.stderr.write('quota filter: authdaemon failed to look up "%s"\n' % addr)
         return ''
     except courier.authdaemon.IoError, e:
-        sys.stderr.write('quota filter: authdaemon failed, "%s"' % e.message)
+        sys.stderr.write('quota filter: authdaemon failed, "%s"\n' % e)
         return ''
     if userInfo.has_key('MAILDIR'):
         maildirsize = os.path.join(userInfo['MAILDIR'], 'maildirsize')
@@ -86,7 +87,7 @@ def doFilter(bodyFile, controlFileList):
             if quotaError:
                 return '421 %s' % quotaError
         elif courier.config.isHosteddomain(domain):
-            quotaError = _checkQuota(x)
+            quotaError = _checkQuota(x[0])
             if quotaError:
                 return '421 %s' % quotaError
     return ''
