@@ -1,3 +1,31 @@
+2010-08-14 22:22  gordon
+
+	* courier-pythonfilter.spec, setup.py: Release 1.7
+
+2010-08-14 22:18  gordon
+
+	* filters/: auto_whitelist.py, comeagain.py, dialback.py,
+	greylist.py: Replace md5 module with hashlib.
+
+2010-08-14 22:09  gordon
+
+	* courier/: config.py, xfilter.py: Replace the use of os.popen with
+	subprocess.Popen
+
+2010-08-14 21:23  gordon
+
+	* filters/dialback.py: Use hexdigest() for db value.
+
+2010-01-21 09:11  gordon
+
+	* filters/auto_whitelist.py: Don't allow a whitelist between
+	identical addresses.  Users sometimes email themselves a note,
+	which creates a path for spam.
+
+2009-09-07 00:33  gordon
+
+	* filters/clamav.py: Temp fail on clamav exceptions.
+
 2009-01-18 19:47  gordon
 
 	* courier-pythonfilter.spec, setup.py: Release 1.6

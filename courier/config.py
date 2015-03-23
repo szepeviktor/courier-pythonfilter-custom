@@ -21,6 +21,7 @@ import anydbm
 import ConfigParser
 import os
 import socket
+import subprocess
 import sys
 
 try:
@@ -46,37 +47,43 @@ version = 'unknown'
 
 def _setup():
     # Get the path layout for Courier.
-    (chIn, chOut) = os.popen4('courier-config')
-    chOutLine = chOut.readline()
-    while chOutLine != '':
+    try:
+        ch = subprocess.Popen('courier-config', stdout=subprocess.PIPE)
+    except OSError:
+        pass
+    else:
+        for chOutLine in ch.stdout:
+            try:
+                (setting, valueN) = chOutLine.split('=', 1)
+                value = valueN.strip()
+            except:
+                continue
+            if setting in ('prefix', 'exec_prefix', 'bindir', 'sbindir',
+                           'libexecdir', 'sysconfdir', 'datadir', 'localstatedir',
+                           'mailuser', 'mailgroup', 'mailuid', 'mailgid'):
+                globals()[setting] = value
+        # Catch the exit of courier-config
         try:
-            (setting, valueN) = chOutLine.split('=', 1)
-            value = valueN.strip()
-        except:
-            chOutLine = chOut.readline()
-            continue
-        if setting in ('prefix', 'exec_prefix', 'bindir', 'sbindir',
-                       'libexecdir', 'sysconfdir', 'datadir', 'localstatedir',
-                       'mailuser', 'mailgroup', 'mailuid', 'mailgid'):
-            globals()[setting] = value
-        chOutLine = chOut.readline()
-    # Catch the exit of courier-config
-    try:
-        os.wait()
-    except OSError:
-        pass
+            ch.wait()
+        except OSError:
+            pass
     # Get the version of Courier currently running.
-    (chIn, chOut) = os.popen4('%s/courier --version' % sbindir)
-    chOutLine = chOut.readline()
-    versOutput = chOutLine.split(' ')
-    if versOutput[0] == 'Courier':
-        global version
-        version = versOutput[1]
-    # Catch the exit of courier --version
     try:
-        os.wait()
+        ch = subprocess.Popen(['%s/courier' % sbindir, '--version'],
+                              stdout=subprocess.PIPE)
     except OSError:
         pass
+    else:
+        chOutLine = ch.stdout.readline()
+        versOutput = chOutLine.split(' ')
+        if versOutput[0] == 'Courier':
+            global version
+            version = versOutput[1]
+        # Catch the exit of courier --version
+        try:
+            ch.wait()
+        except OSError:
+            pass
     # Initialize the DNS module
     if DNS:
         DNS.DiscoverNameServers()

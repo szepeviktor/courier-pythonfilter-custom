@@ -31,7 +31,7 @@ try:
         try:
             avresult = pyclamav.scanfile(bodyFile)
         except Exception, e:
-            return "554 " + str(e)
+            return "430 " + str(e)
         if avresult[0]:
             return handleVirus(bodyFile, controlFileList, avresult[1])
         return ''
@@ -42,7 +42,7 @@ except ImportError:
             pyclamd.init_unix_socket(localSocket)
             avresult = pyclamd.scan_file(bodyFile)
         except Exception, e:
-            return "554 " + str(e)
+            return "430 " + str(e)
         if avresult != None and avresult.has_key(bodyFile):
             return handleVirus(bodyFile, controlFileList, avresult[bodyFile])
         return ''

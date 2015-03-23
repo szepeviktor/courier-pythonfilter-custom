@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
-import md5
+import hashlib
 import sys
 import time
 import re
@@ -36,11 +36,11 @@ doDebug = 0
 # haven't successfully passed a message will be purged at the age
 # indicated by sendersNotPassedTTL.  Any triplets which have passed a
 # message will be purged at the age indicated by sendersPassedTTL, and
-# will have to prove themselves again.  A triplet must be at as old as 
+# will have to prove themselves again.  A triplet must be at as old as
 # greylistTime to be accepted.
 sendersPurgeInterval = 60 * 60 * 2
 sendersPassedTTL = 60 * 60 * 24 * 36
-sendersNotPassedTTL = 60 * 60 * 24 
+sendersNotPassedTTL = 60 * 60 * 24
 greylistTime = 300
 
 _IPv4Regex = re.compile('^(\d+\.\d+\.\d+)\.\d+$')
@@ -77,7 +77,7 @@ def doFilter(bodyFile, controlFileList):
     temporary failure, and expect the remote MTA to try again.  Many
     spamware sites and viruses will not, preventing these messages
     from getting into the users' mailbox.
-    
+
     This strategy is based on the whitepaper at:
     http://projects.puremagic.com/greylisting/whitepaper.html
 
@@ -107,13 +107,13 @@ def doFilter(bodyFile, controlFileList):
 
     # Create a new MD5 object.  The sender/recipient/IP triplets will
     # be stored in the db in the form of an MD5 digest.
-    senderMd5 = md5.new(sender)
+    senderMd5 = hashlib.md5(sender)
 
     # Create a digest for each triplet and look it up first in the
-    # _sendersNotPassed db.  If it's found there, but is not old 
+    # _sendersNotPassed db.  If it's found there, but is not old
     # enough to meet greylistTime, save the minimum amount of time
     # the sender must wait before retrying for the error message that
-    # we'll return.  If it is old enough, remove the digest from 
+    # we'll return.  If it is old enough, remove the digest from
     # _sendersNotPassed db, and save it in the _sendersPassed db.
     # Then, check for the triplet in _sendersPassed db, and update
     # its time value if found.  If the triplet isn't found in the

@@ -2,7 +2,7 @@
 %define expect_egg_info %(%{__python} -c "import distutils.command.install_egg_info" > /dev/null 2>&1 && echo 1 || echo 0)
 
 Name:      courier-pythonfilter
-Version:   1.6
+Version:   1.7
 Release:   1%{?dist}
 Summary:   Python filtering architecture for the Courier MTA.
 
@@ -13,8 +13,8 @@ Source0:   %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArchitectures: noarch
 
-BuildRequires: python python-devel
-Requires:  courier
+BuildRequires: python, python-devel
+Requires:  courier, python-hashlib
 
 %description
 Pythonfilter provides a framework for writing message filters in

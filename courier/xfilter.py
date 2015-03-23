@@ -18,6 +18,7 @@
 # along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import subprocess
 import sys
 import thread
 import email
@@ -151,51 +152,51 @@ class XFilter:
         return self.controlData
 
     def submitInject(self, source, recipients):
-        def _submit_read_response(sOutput):
+        def _submit_read_response(submit):
             # Read an SMTP style response from the submit program, and
             # return the assembled response.
             response = ''
-            sbuf = sOutput.readline()
+            sbuf = submit.stdout.readline()
             while sbuf and len(sbuf) > 4:
                 response += sbuf
                 if sbuf[3] == ' ':
                     return response
-                sbuf = sOutput.readline()
+                sbuf = submit.stdout.readline()
             # We will have returned unless an empty or malformed response
             # was read, in which case we need to raise an exception.
             raise SubmitError('Error reading response, got "%s"' % response)
 
-        def _submit_send(sendData, sInput, sOutput):
+        def _submit_send(sendData, submit):
             # Write "sendData" to submit's stdin
             try:
-                sInput.write(sendData)
+                submit.stdin.write(sendData)
             except IOError:
-                sInput.close()
-                sOutput.close()
-                os.wait()
+                submit.stdin.close()
+                submit.stdout.close()
+                submit.wait()
                 raise SubmitError('IOError writing: "%s"' % sendData)
 
-        def _submit_send_message(sendData, sInput, sOutput):
+        def _submit_send_message(sendData, submit):
             # Write email.message object "sendData" to submit's stdin
             try:
-                g = email.generator.Generator(sInput, mangle_from_=False)
+                g = email.generator.Generator(submit.stdin, mangle_from_=False)
                 g.flatten(sendData)
             except IOError:
-                sInput.close()
-                sOutput.close()
-                os.wait()
+                submit.stdin.close()
+                submit.stdout.close()
+                submit.wait()
                 raise SubmitError('IOError writing: "%s"' % sendData)
 
-        def _submit_recv(sInput, sOutput):
+        def _submit_recv(submit):
             # Read the response.  If it's not a 2XX code, raise an exception
             # and allow submit to exit.
-            recvData = _submit_read_response(sOutput)
+            recvData = _submit_read_response(submit)
             if recvData[0] in '45':
-                if not sInput.closed:
-                    sInput.close()
-                if not sOutput.closed:
-                    sOutput.close()
-                os.wait()
+                if not submit.stdin.closed:
+                    submit.stdin.close()
+                if not submit.stdout.closed:
+                    submit.stdout.close()
+                submit.wait()
                 raise SubmitError(recvData)
 
         def _submit_toXtext(text):
@@ -219,7 +220,8 @@ class XFilter:
         _envLock.acquire()
         os.environ['RELAYCLIENT'] = ''
         _envLock.release()
-        (sInput, sOutput) = os.popen2(submitArgs, 't', 0)
+        submit = subprocess.Popen(submitArgs,
+                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
         # Feed in the message sender
         sbuf = self.controlData['s'] + '\t'
@@ -232,8 +234,8 @@ class XFilter:
         if self.controlData['e']:
             sbuf += '\t' + _submit_toXtext(self.controlData['e'])
         sbuf += '\n'
-        _submit_send(sbuf, sInput, sOutput)
-        _submit_recv(sInput, sOutput)
+        _submit_send(sbuf, submit)
+        _submit_recv(submit)
 
         # Feed in each of the recipients
         for x in recipients:
@@ -247,21 +249,21 @@ class XFilter:
                 sbuf = '%s\t%s\t%s\n' % (xaliasaddr, _submit_toXtext(x[2]), x[1])
             else:
                 sbuf = '%s\t%s\t%s\n' % (x[0], _submit_toXtext(x[2]), x[1])
-            _submit_send(sbuf, sInput, sOutput)
-            _submit_recv(sInput, sOutput)
+            _submit_send(sbuf, submit)
+            _submit_recv(submit)
 
         # Terminate the recipient list by sending a blank line
-        _submit_send('\n', sInput, sOutput)
+        _submit_send('\n', submit)
 
         # Send the message
-        _submit_send_message(self.message, sInput, sOutput)
+        _submit_send_message(self.message, submit)
         # Close submit's input stream, marking the end of the messsage.
-        sInput.close()
+        submit.stdin.close()
         # Check submit's final response.
-        _submit_recv(sInput, sOutput)
+        _submit_recv(submit)
         # Close the remaining stream and wait() for submit's exit.
-        sOutput.close()
-        os.wait()
+        submit.stdout.close()
+        submit.wait()
 
     def oldSubmit(self):
         # Add a marker to this message so that it's not filtered again.

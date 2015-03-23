@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
-import md5
+import hashlib
 import sys
 import time
 import courier.config
@@ -71,7 +71,7 @@ def doFilter(bodyFile, controlFileList):
 
     # Create a new MD5 object.  The pairs of sender/recipient will
     # be stored in the db in the form of an MD5 digest.
-    senderMd5 = md5.new(sender)
+    senderMd5 = hashlib.md5(sender)
 
     # Create a digest for each recipient and look it up in the db.
     # Update the timestamp of each pair as we look them up.  If any

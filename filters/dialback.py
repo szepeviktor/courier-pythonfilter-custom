@@ -18,7 +18,7 @@
 # along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
 import errno
-import md5
+import hashlib
 import os
 import select
 import smtplib
@@ -81,7 +81,7 @@ def doFilter(bodyFile, controlFileList):
     if sender == '':
         # Null sender is allowed as a non-fatal error
         return ''
-    senderMd5 = md5.new(sender)
+    senderMd5 = hashlib.md5(sender).hexdigest()
 
     _goodSenders.purge()
     _badSenders.purge()
