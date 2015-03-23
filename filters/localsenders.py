@@ -23,7 +23,11 @@ import courier.config
 import courier.control
 
 
+requireAuth = False
+
+
 def initFilter():
+    courier.config.applyModuleConfig('localsenders.py', globals())
     # Record in the system log that this filter was initialized.
     sys.stderr.write('Initialized the "localsenders" python filter\n')
 
@@ -40,10 +44,16 @@ def doFilter(bodyFile, controlFileList):
     try:
         if courier.config.isLocal(sparts[1]):
             senderInfo = courier.authdaemon.getUserInfo('smtp', sparts[0])
-        if courier.config.isHosteddomain(sparts[1]):
+        elif courier.config.isHosteddomain(sparts[1]):
             senderInfo = courier.authdaemon.getUserInfo('smtp', sender)
+        else:
+            # Short circuit return for non-local senders
+            return ''
     except courier.authdaemon.KeyError:
         return '517 Sender does not exist: %s' % sender
+    if(requireAuth and
+       courier.control.getAuthUser(controlFileList, bodyFile) is None):
+        return '517 Policy requires local senders to authenticate.'
     return ''
 
 

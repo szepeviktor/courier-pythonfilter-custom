@@ -25,7 +25,7 @@ import TtlDb
 
 
 class TestTtlDb(unittest.TestCase):
-    
+
     def setUp(self):
         os.mkdir('tmp')
         os.mkdir('tmp/pythonfilter')
@@ -46,10 +46,16 @@ class TestTtlDb(unittest.TestCase):
         time.sleep(2)
         value2 = time.time()
         db['name2'] = value2
+        db['name2\' -- '] = value2
+        time.sleep(1)
+        value2 = time.time()
+        db['name2'] = value2
+        db['name2\' -- '] = value2
         db.purge()
         self.assertEqual(db.has_key('name1'), False)
         self.assertEqual(db.has_key('name2'), True)
         self.assertEqual(int(db['name2']), int(value2))
+        self.assertEqual(int(db['name2\' -- ']), int(value2))
 
 
 if __name__ == '__main__':

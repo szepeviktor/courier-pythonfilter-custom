@@ -74,7 +74,7 @@ exempt from further filtering in pythonfilter.
 
 whitelist_block: examines messages to determine whether or not the
 smtpaccess.dat file contains an empty BLOCK value for the sender's
-address.  If so, the message is exempt from further filtering in 
+address.  If so, the message is exempt from further filtering in
 pythonfilter.  This can be used to whitelist IP addresses and
 networks, and will also exempt those addresses from RBL blocking.
 
@@ -89,6 +89,8 @@ then the message is exempt from further filtering in pythonfilter.
 
 attachments: checks message MIME parts against a regex listing
 forbidden patterns in the filename or name Content-type parameters.
+
+log_aliases: logs info about the alias used to reach recipients
 
 clamav: scans each message MIME part with the ClamAV virus scanner.
 
@@ -119,7 +121,7 @@ together.
 
 You will find that some senders do not behave well enough to be
 compatible with the basic assumptions of the greylisting technique.
-It is recommended that you whitelist those senders using the 
+It is recommended that you whitelist those senders using the
 whitelist_block module.  Information on known bad senders is at:
 http://greylisting.org/whitelisting.shtml
 You could build the whitelist for those senders by:
@@ -160,7 +162,7 @@ dialback: checks the envelope sender's address to make sure that a
 bounce or reply can be delivered.  Mail from addresses that can't be
 verified will be refused.
 
-spamassassin: scans messages using "spamc".  This requires that 
+spamassassin: scans messages using "spamc".  This requires that
 SpamAssassin's daemon is running.  Note that all mail will be filtered
 under the settings for courier's user, which means that your users'
 individual whitelists and thresholds won't be processed.
@@ -175,6 +177,10 @@ be customized in the pythonfilter-modules.conf file.  It should be a
 mapping of domains to the paths of plain text files which will be used
 as signatures.
 
+noreceivedheaders: removes the first Received header from messages sent
+by authenticated senders.  This should effectively remove any
+identifying information about those senders.
+
 
 TtlDb
 =====
@@ -183,12 +189,12 @@ The TtlDb module has experimental support for PostgreSQL.  This support
 can be useful if you are clustering Courier servers and need a shared
 storage for TtlDb.
 
-To enable SQL support, open pythonfilter-modules.conf in your text editor
-and locate the TtlDb section.  Change "type" to 'pg' for PostgreSQL, and
-set appropriate values for the other settings.
+To enable SQL support, open pythonfilter-modules.conf in your text
+editor and locate the TtlDb section.  Change "type" to 'psycopg2' for
+PostgreSQL, and set appropriate values for the other settings.
 
 [TtlDb]
-type = 'pg'
+type = 'psycopg2'
 host = 'localhost'
 port = '5432'
 db = 'pythonfilter'
@@ -203,7 +209,7 @@ pythonfilter's quarantine support allows filters to move a message
 into the quarantine, rather than deliver it to the intended recipients.
 Each recipient will, instead, get a notice with some basic details
 about the message and instructions on releasing the message from the
-quarantine.  In most cases, you must make sure that Courier's 
+quarantine.  In most cases, you must make sure that Courier's
 "enablefiltering" file does not include "local".  If you filter local
 mail, the filter which quarantined a message is likely to simply
 quarantine it again when users attempt to release it.
@@ -326,7 +332,7 @@ attachments
 The configuration file, /etc/pythonfilter-modules.conf, can be used
 to modify the behavior of some filters.  Each filter which has some
 behavior which can be modified will have a section present in the
-configuration file with its default values listed.  Uncomment the 
+configuration file with its default values listed.  Uncomment the
 section header and the values that you'd like to modify.
 
 The values read from this configuration file will be passed to Python's

@@ -93,7 +93,7 @@ def doFilter(bodyFile, controlFileList):
     if foundAll:
         return ''
     else:
-        return('421 Please send the message again to proof you are not spamware or virusware.')
+        return('421 Please send the message again to prove you are not spamware or virusware.')
 
 
 if __name__ == '__main__':

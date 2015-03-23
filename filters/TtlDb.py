@@ -25,12 +25,7 @@ import courier.config
 
 class TtlDbError(Exception):
     """Base class for exceptions in this module."""
-
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return repr(self.value)
+    pass
 
 
 class LockError(TtlDbError):
@@ -51,21 +46,31 @@ class OpenError(TtlDbError):
     pass
 
 
-class TtlDbPg:
+class TtlDbSQL:
     """Wrapper for SQL db containing tokens with a TTL."""
+
+    dbapi_name = None
+    create_statement = 'CREATE TABLE %s (id CHAR(64) NOT NULL, value BIGINT NOT NULL, PRIMARY KEY(id))'
+    purge_statement = 'DELETE FROM %s WHERE value < $1'
+    select_statement = 'SELECT value FROM %s WHERE id = $1'
+    insert_statement = 'INSERT INTO %s VALUES ($1, $2)'
+    update_statement = 'UPDATE %s SET value=$2 WHERE id=$1'
+    delete_statement = 'DELETE FROM %s WHERE id = $1'
+
     def __init__(self, name, TTL, PurgeInterval):
         self.dbLock = thread.allocate_lock()
 
-        import pgsql
-        self.dbapi = pgsql
+        if self.dbapi_name is None:
+            raise OpenError('Do not use TtlDbSQL directly.  Subclass and define "dbapi".')
+        self.dbapi = __import__(self.dbapi_name)
         self.tablename = name
         self._connect()
         # The db will be scrubbed at the interval indicated in seconds.
-        # All records older than the "TTL" number of seconds will be 
+        # All records older than the "TTL" number of seconds will be
         # removed from the db.
         self.TTL = TTL
         self.PurgeInterval = PurgeInterval
-        # A value of 0 will cause the db to purge the first time the 
+        # A value of 0 will cause the db to purge the first time the
         # purge() function is called.  After the first time, the db
         # will not be purged until the PurgeInterval has passed.
         self.LastPurged = 0
@@ -83,18 +88,25 @@ class TtlDbPg:
         try:
             try:
                 c = self.db.cursor()
-                c.execute('CREATE TABLE %s (id CHAR(64) NOT NULL, value BIGINT NOT NULL, PRIMARY KEY(id))' % self.tablename)
+                c.execute(self.create_statement % self.tablename)
                 self.db.commit()
             except:
-                pass
+                self.db.rollback()
         finally:
             c.close()
 
     def _dbExec(self, query, params=None, reconnect=True):
+        exec_params = None
+        if params:
+            if self.dbapi.paramstyle == 'numeric':
+                exec_params = [x[1] for x in params]
+            elif(self.dbapi.paramstyle == 'pyformat'
+                 or self.dbapi.paramstyle == 'named'):
+                exec_params = dict(params)
         try:
             c = self.db.cursor()
-            c.execute(query, params)
-        except:
+            c.execute(query, exec_params)
+        except self.dbapi.OperationalError:
             c.close()
             if reconnect:
                 self._connect()
@@ -113,7 +125,11 @@ class TtlDbPg:
             return None
 
     def _dbWrite(self, query, params=None):
-        c = self._dbExec(query, params)
+        try:
+            c = self._dbExec(query, params)
+        except:
+            self.db.rollback()
+            raise
         self.db.commit()
         c.close()
 
@@ -126,7 +142,7 @@ class TtlDbPg:
 
     def purge(self):
         """Remove all keys who have outlived their TTL.
-        
+
         Don't call this function inside a locked section of code.
         """
         self.lock()
@@ -134,33 +150,50 @@ class TtlDbPg:
             if time.time() > (self.LastPurged + self.PurgeInterval):
                 # Any token whose value is less than "minVal" is no longer valid.
                 minVal = int(time.time() - self.TTL)
-                self._dbWrite('DELETE FROM %s WHERE value < $1' % self.tablename,
-                              (minVal,))
+                self._dbWrite(self.purge_statement % self.tablename,
+                              (('value', minVal),))
                 self.LastPurged = time.time()
         finally:
             self.unlock()
 
     def has_key(self, key):
-        value = self._dbRead('SELECT value FROM %s WHERE id = $1' % self.tablename,
-                             (key,))
+        value = self._dbRead(self.select_statement % self.tablename,
+                             (('id', key),))
         return bool(value)
 
     def __getitem__(self, key):
-        value = self._dbRead('SELECT value FROM %s WHERE id = $1' % self.tablename,
-                             (key,))
+        value = self._dbRead(self.select_statement % self.tablename,
+                             (('id', key),))
         return value
 
     def __setitem__(self, key, value):
         try:
-            self._dbWrite('INSERT INTO %s VALUES ($1, $2)' % self.tablename,
-                          (key, int(value)))
-        except self.dbapi.ProgrammingError:
-            self._dbWrite('UPDATE %s SET value=$2 WHERE id=$1' % self.tablename,
-                          (key, int(value)))
+            self._dbWrite(self.insert_statement % self.tablename,
+                          (('id', key), ('value', int(value))))
+        except (self.dbapi.ProgrammingError, self.dbapi.IntegrityError):
+            self._dbWrite(self.update_statement % self.tablename,
+                          (('id', key), ('value', int(value))))
 
     def __delitem__(self, key):
-        self._dbWrite('DELETE FROM %s WHERE id = $1' % self.tablename,
-                      (key,))
+        self._dbWrite(self.delete_statement % self.tablename,
+                      (('id', key),))
+
+
+class TtlDbPg(TtlDbSQL):
+    """Wrapper for SQL db containing tokens with a TTL."""
+
+    dbapi_name = 'pgsql'
+
+
+class TtlDbPsycopg2(TtlDbSQL):
+    """Wrapper for SQL db containing tokens with a TTL."""
+
+    dbapi_name = 'psycopg2'
+    purge_statement = 'DELETE FROM %s WHERE value < %%(value)s'
+    select_statement = 'SELECT value FROM %s WHERE id = %%(id)s'
+    insert_statement = 'INSERT INTO %s VALUES (%%(id)s, %%(value)s)'
+    update_statement = 'UPDATE %s SET value=%%(value)s WHERE id=%%(id)s'
+    delete_statement = 'DELETE FROM %s WHERE id = %%(id)s'
 
 
 class TtlDbDbm:
@@ -176,11 +209,11 @@ class TtlDbDbm:
         except:
             raise OpenError('Failed to open %s db in %s, make sure that the directory exists\n' % (name, dbmDir))
         # The db will be scrubbed at the interval indicated in seconds.
-        # All records older than the "TTL" number of seconds will be 
+        # All records older than the "TTL" number of seconds will be
         # removed from the db.
         self.TTL = TTL
         self.PurgeInterval = PurgeInterval
-        # A value of 0 will cause the db to purge the first time the 
+        # A value of 0 will cause the db to purge the first time the
         # purge() function is called.  After the first time, the db
         # will not be purged until the PurgeInterval has passed.
         self.LastPurged = 0
@@ -202,7 +235,7 @@ class TtlDbDbm:
 
     def purge(self):
         """Remove all keys who have outlived their TTL.
-        
+
         Don't call this function inside a locked section of code.
         """
         self.lock()
@@ -231,18 +264,19 @@ class TtlDbDbm:
 
 
 _dbmClasses = {'dbm': TtlDbDbm,
+               'psycopg2': TtlDbPsycopg2,
                'pg': TtlDbPg}
 
 
 def TtlDb(name, TTL, PurgeInterval):
     """Wrapper for db containing tokens with a TTL.
-    
+
     This is used when a db is required which simply tracks whether or not
     a token exists, and when it was last used.  Token values should be the
     value of time.time() when the token was last used.  The tokens will
     be removed from the db if their value indicates that they haven't been
     used within the TTL period.
-    
+
     A TtlDb.OpenError exception will be raised if the db can't be opened.
     """
     dbConfig = courier.config.getModuleConfig('TtlDb')

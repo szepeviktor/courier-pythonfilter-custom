@@ -23,6 +23,11 @@ import os
 import socket
 import sys
 
+try:
+    import DNS
+except:
+    DNS = None
+
 
 prefix = '/usr/lib/courier'
 exec_prefix = '/usr/lib/courier'
@@ -40,6 +45,7 @@ version = 'unknown'
 
 
 def _setup():
+    # Get the path layout for Courier.
     (chIn, chOut) = os.popen4('courier-config')
     chOutLine = chOut.readline()
     while chOutLine != '':
@@ -49,8 +55,8 @@ def _setup():
         except:
             chOutLine = chOut.readline()
             continue
-        if setting in ('prefix', 'exec_prefix', 'bindir', 'sbindir', 
-                       'libexecdir', 'sysconfdir', 'datadir', 'localstatedir', 
+        if setting in ('prefix', 'exec_prefix', 'bindir', 'sbindir',
+                       'libexecdir', 'sysconfdir', 'datadir', 'localstatedir',
                        'mailuser', 'mailgroup', 'mailuid', 'mailgid'):
             globals()[setting] = value
         chOutLine = chOut.readline()
@@ -59,6 +65,7 @@ def _setup():
         os.wait()
     except OSError:
         pass
+    # Get the version of Courier currently running.
     (chIn, chOut) = os.popen4('%s/courier --version' % sbindir)
     chOutLine = chOut.readline()
     versOutput = chOutLine.split(' ')
@@ -70,14 +77,17 @@ def _setup():
         os.wait()
     except OSError:
         pass
+    # Initialize the DNS module
+    if DNS:
+        DNS.DiscoverNameServers()
 
 
 def isMinVersion(minVersion):
     """Check for minumum version of Courier.
-    
+
     Return True if the version of courier currently installed is newer
     than or the same as the version given as an argument.
-    
+
     """
     if version == 'unknown':
         return False
@@ -111,6 +121,25 @@ def me(_cached = [None]):
         return val
     val = socket.gethostname()
     _cached[0] = val
+    return val
+
+
+def esmtphelo(connection=None):
+    """Returns a fully qualified domain name.
+
+    The value will be computed as documented by Courier's man page. The
+    optional "connection" argument should be a socket object which is
+    connected to an SMTP server.
+
+    """
+    val = read1line('esmtphelo')
+    if not val:
+        val = me()
+    if val == '*':
+        if connection is None or DNS is None:
+            val = me()
+        else:
+            val = DNS.revlookup(connection.getsockname()[0])
     return val
 
 
@@ -325,17 +354,17 @@ _standardConfigPaths = ['/etc/pythonfilter-modules.conf',
                         '/usr/local/etc/pythonfilter-modules.conf']
 def getModuleConfig(moduleName):
     """Return a dictionary of config values.
-    
+
     The function will attempt to parse "pythonfilter-modules.conf" in
     "/etc" and "/usr/local/etc", and load the values from the
     section matching the moduleName argument.  If the configuration
     files aren't found, or a name was requested that is not found in
     the config file, an empty dictionary will be returned.
-    
+
     The values read from the configuration file will be passed to
     eval(), so they must be valid python expressions.  They will be
     returned to the caller in their evaluated form.
-    
+
     """
     config = {}
     cp = ConfigParser.RawConfigParser()
@@ -359,11 +388,11 @@ def getModuleConfig(moduleName):
 
 def applyModuleConfig(moduleName, moduleNamespace):
     """Modify moduleNamespace with values from configuration file.
-    
-    This function will load configuration files using the 
+
+    This function will load configuration files using the
     getModuleConfig function, and will then add or replace any names
     in moduleNamespace with the values from the configuration files.
-    
+
     """
     config = getModuleConfig(moduleName)
     for i in config.keys():

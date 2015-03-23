@@ -36,11 +36,7 @@ _envLock = thread.allocate_lock()
 
 
 class XFilterError(Exception):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return repr(self.value)
+    pass
 
 
 class InitError(XFilterError):
@@ -86,7 +82,7 @@ class XFilter:
     method to insert the new message into the spool.  If there is an
     error submitting the modified message, xfilter.SubmitError will
     be raised.
-    
+
     The behavior and return value of the submit method will depend on
     the version of Courier under which filters are used.  Under version
     0.57.1 and prior versions, the recipients of the original message
@@ -99,7 +95,7 @@ class XFilter:
     message that has been modified; it is no longer possible to notify
     the sender that the message was rejected.  Filters that modify
     messages should be run last.
-    
+
     Under versions of Courier which support modifying the message's body
     file in place, the submit function will do so and will not mark all
     of the recipients complete.  Submit will return an empty string,
@@ -138,7 +134,7 @@ class XFilter:
                 marker = self._loopMarker()
                 filters = self.message.get_all('X-Filtered-By')
                 if marker in filters:
-                    raise LoopError('Message has already been filtered by %s' % filterName)
+                    raise LoopError('Message has already been filtered by %s' % self.filterName)
 
     def _useLoopPrevention(self):
         if courier.config.isMinVersion('0.57.1'):

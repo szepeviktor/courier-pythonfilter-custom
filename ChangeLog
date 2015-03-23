@@ -1,3 +1,60 @@
+2009-01-02 21:18  gordon
+
+	* courier-pythonfilter.spec, setup.py: Release 1.5
+
+2009-01-02 21:16  gordon
+
+	* README.hacking, courier/config.py, filters/dialback.py: Add an
+	"esmtphelo" function to the config module which returns a value
+	similar to the one documented for Courier's configuration file of
+	the same name.
+	
+	This function is now used by the "dialback" module to set an
+	appropriate "helo" name for its SMTP sessions.
+
+2009-01-02 20:49  gordon
+
+	* README, pythonfilter.conf, filters/noreceivedheaders.py: Add
+	filter which removes AUTH data from message headers.
+
+2009-01-01 21:55  gordon
+
+	* pythonfilter-modules.conf, filters/localsenders.py: Add option to
+	require that "localsenders" use authentication.
+
+2008-12-31 20:46  gordon
+
+	* filters/TtlDb.py: Catch IntegrityError thrown by the psycopg2
+	module on duplicate key.
+
+2008-12-21 21:00  gordon
+
+	* courier/authdaemon.py, courier/xfilter.py, filters/TtlDb.py: Use
+	the default Exception implementation.
+
+2008-12-21 20:58  gordon
+
+	* README, filters/TtlDb.py, tests/testttldb.py: Add support for the
+	psycopg2 adapter.
+
+2008-10-19 14:52  gordon
+
+	* filters/comeagain.py: Fix typo.
+
+2008-10-12 01:15  gordon
+
+	* courier-pythonfilter.spec: Include egg info for Python
+	installations that install it.
+
+2008-09-19 08:42  gordon
+
+	* README, pythonfilter.conf, filters/log_aliases.py: Add new filter
+	which logs information about aliases.
+
+2008-09-17 10:33  gordon
+
+	* courier/xfilter.py: Fix unbound reference to filterName
+
 2008-07-31 16:43  gordon
 
 	* courier-pythonfilter.spec, setup.py: Release 1.4

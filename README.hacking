@@ -91,7 +91,7 @@ mutex will block further execution of the filter, and mail can not be
 accepted.
 
 It is also important to note that Python threads do not get signals.
-In addition to not being able to use any of the functions in the 
+In addition to not being able to use any of the functions in the
 "signal" module (including alarm), this means that spawned processes
 won't be collected automatically.  If you create new processes with
 system() or popen(), remember to call os.wait() to collect their
@@ -103,6 +103,19 @@ Modules
 =======
 
 courier.config:
+
+isMinVersion(minVersion)
+    Check for minumum version of Courier.
+
+    Return True if the version of courier currently installed is newer
+    than or the same as the version given as an argument.
+
+esmtphelo(connection=None)
+    Returns a fully qualified domain name.
+
+    The value will be computed as documented by Courier's man page. The
+    optional "connection" argument should be a socket object which is
+    connected to an SMTP server.
 
 defaultdomain()
     Return Courier's "defaultdomain" value.
@@ -176,21 +189,21 @@ smtpaccess(ip)
 
 getModuleConfig(moduleName)
     Return a dictionary of config values.
-    
+
     The function will attempt to parse "pythonfilter-modules.conf" in
     "/etc" and "/usr/local/etc", and load the values from the
     section matching the moduleName argument.  If the configuration
     files aren't found, or a name was requested that is not found in
     the config file, an empty dictionary will be returned.
-    
+
     The values read from the configuration file will be passed to
     eval(), so they must be valid python expressions.  They will be
     returned to the caller in their evaluated form.
-    
+
 applyModuleConfig(moduleName, moduleNamespace)
     Modify moduleNamespace with values from configuration file.
-    
-    This function will load configuration files using the 
+
+    This function will load configuration files using the
     getModuleConfig function, and will then add or replace any names
     in moduleNamespace with the values from the configuration files.
 
@@ -294,11 +307,11 @@ getSendersMta(controlFileList)
 
 getAuthUser(controlFileList, bodyFile=None)
     Return the username used during SMTP AUTH, if available.
-    
+
     The return value with be a string containing the username used
     for authentication during submission of the message, or None,
     if authentication was not used.
-    
+
     The arguments are requested with controlFileList first in order
     to be more consistent with other functions in this module.
     Courier currently stores auth info only in the message header,
@@ -342,7 +355,7 @@ class XFilter(filterName, bodyFile, controlFileList)
     method to insert the new message into the spool.  If there is an
     error submitting the modified message, xfilter.SubmitError will
     be raised.
-    
+
     The behavior and return value of the submit method will depend on
     the version of Courier under which filters are used.  Under version
     0.57.1 and prior versions, the recipients of the original message
@@ -355,7 +368,7 @@ class XFilter(filterName, bodyFile, controlFileList)
     message that has been modified; it is no longer possible to notify
     the sender that the message was rejected.  Filters that modify
     messages should be run last.
-    
+
     Under versions of Courier which support modifying the message's body
     file in place, the submit function will do so and will not mark all
     of the recipients complete.  Submit will return an empty string,

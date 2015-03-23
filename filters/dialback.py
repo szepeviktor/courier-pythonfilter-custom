@@ -151,7 +151,7 @@ def doFilter(bodyFile, controlFileList):
             continue
 
         try:
-            (code, reply) = smtpi.helo()
+            (code, reply) = smtpi.helo(courier.config.esmtphelo(smtpi.sock))
             if code // 100 != 2:
                 # Save the error message.  If no other servers are available,
                 # inform the sender, but don't save the sender as bad.
@@ -209,10 +209,10 @@ def doFilter(bodyFile, controlFileList):
 
 class ThreadSMTP(smtplib.SMTP):
     """SMTP class safe for use in threaded applications.
-    
+
     This class reimplements the SMTP class with non-blocking IO,
     so that threaded applications don't lock up.
-    
+
     This class won't make starttls support thread-safe.
     """
     def connect(self, host='localhost', port=0):

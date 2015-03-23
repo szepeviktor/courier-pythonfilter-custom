@@ -1,7 +1,8 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
+%define expect_egg_info %(%{__python} -c "import distutils.command.install_egg_info" > /dev/null 2>&1 && echo 1 || echo 0)
 
 Name:      courier-pythonfilter
-Version:   1.4
+Version:   1.5
 Release:   1%{?dist}
 Summary:   Python filtering architecture for the Courier MTA.
 
@@ -12,11 +13,11 @@ Source0:   %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArchitectures: noarch
 
-BuildRequires: python
+BuildRequires: python python-devel
 Requires:  courier
 
 %description
-Pythonfilter provides a framework for writing message filters in 
+Pythonfilter provides a framework for writing message filters in
 Python, as well as a selection of common filters.
 
 
@@ -63,6 +64,9 @@ fi
 %{python_sitelib}/pythonfilter/*
 %dir %{python_sitelib}/courier
 %{python_sitelib}/courier/*
+%if %{expect_egg_info}
+  %{python_sitelib}/courier_pythonfilter-*-info
+%endif
 %{_bindir}/*
 %config(noreplace) %{_sysconfdir}/*
 %dir %{_localstatedir}/lib/pythonfilter

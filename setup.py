@@ -6,7 +6,7 @@ import sys
 from distutils.core import setup
 
 setup(name="courier-pythonfilter",
-      version="1.4",
+      version="1.5",
       description="Python filtering architecture for the Courier MTA.",
       author="Gordon Messmer",
       author_email="gordon@dragonsdawn.net",
@@ -15,6 +15,6 @@ setup(name="courier-pythonfilter",
       scripts=['pythonfilter', 'pythonfilter-quarantine'],
       packages=['courier', 'pythonfilter'],
       package_dir={'pythonfilter': 'filters'},
-      data_files=[('/etc/', ['pythonfilter.conf', 
+      data_files=[('/etc/', ['pythonfilter.conf',
                              'pythonfilter-modules.conf'])]
      )
