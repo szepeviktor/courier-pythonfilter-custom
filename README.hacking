@@ -1,0 +1,378 @@
+Hacking
+=======
+
+The pythonfilter program itself is a multi-threaded daemon that loads
+filters as python modules and passes the control and data files from
+courier to each module in turn.
+
+pythonfilter includes several modules that provide utility functions.
+These modules are found in the "courier" directory.  The "config"
+module provides functions to access or interpret Courier's
+configuration settings.  The "control" module provides functions to
+interpret Courier's control files.  "xfilter" can be used to modify
+messages during the global filtering stage.
+
+Filters are imported as modules.  Each filter should start by
+initializing any settings or modules that it needs to function
+properly.  The final step in initialization should be writing a status
+message to stderr.  e.g.:
+
+  sys.stderr.write('Initialized the foo python filter\n')
+
+Filters may have as many functions as required, but they must provide
+at least one function, called "doFilter", declared as:
+
+  def doFilter(bodyFile, controlFileList):
+     ...
+
+The bodyFile argument will be the path to the file containing the
+message body.  Courier does not allow you to modify this file, but you
+may read it or give it to Python's email classes for information.
+
+The controlFileList argument will be a list of paths to the message's
+control files.
+
+This function will be called to filter each incoming message.  The
+return value of this function will determine how pythonfilter
+processes the message, and how Courier will respond to the sender.
+Return values must be strings; they may be SMTP-style multi-line
+strings.  Valid return values are:
+
+* '', the empty string will indicate that the filter processed the
+  message successfully, and has not rejected it.  The remaining
+  filters in pythonfilter's list will be run.  Any return value
+  other than the empty string will cause pythonfilter to stop
+  processing the message,  and deliver the return value to Courier.
+
+* '200 <text>', an SMTP-style success message will indicate that the
+  filter processed the message successfully, and has not rejected it.
+  The remaining filters in pythonfilter's list will not be run, but
+  any courierfilters outside of pythonfilter will, and may still reject
+  the message.
+
+* '000 <text>', the initial '0' will be transformed to '2' by courier
+  making this text an SMTP-style success message.  In this case, no
+  further filters will be run either by pythonfilter or by courier.
+
+* '400 <text>' or '500 <text>' will be returned to the sender
+  immediately, indicating to them that the message was either temporarily
+  or permanently rejected.  Courier will then drop this message.
+
+Filters may also provide a function called "initFilter", declared as:
+
+  def initFilter():
+     ...
+
+This function may configure the module in any way necessary.  It will
+usually call the applyModuleConfig function in the courier.config module,
+and write a message to stderr, indicating that it has been initialized.
+
+Each filter's doFilter function is run in a thread.  Take care to ensure
+that your filter is thread safe when writing them.  If you modify global
+variables in your functions, you should protect them with a mutex.  Take
+care as well to verify that your resources are cleaned up properly.
+Resource leaks can spring up, and will lead to Courier rejecting mail.
+
+I recommend this construct where ever mutexes are used:
+
+mutex.acquire()
+try:
+    <code>
+finally:
+    mutex.release()
+
+In this construct, if an uncaught exception occurs in the code block,
+the mutex will be released and the exception will continue to be
+raised, potentially to the pythonfilter process, which will log the
+details of the uncaught exception.
+
+Naturally, if a mutex is held and an uncaught exception is raised, the
+mutex will block further execution of the filter, and mail can not be
+accepted.
+
+It is also important to note that Python threads do not get signals.
+In addition to not being able to use any of the functions in the 
+"signal" module (including alarm), this means that spawned processes
+won't be collected automatically.  If you create new processes with
+system() or popen(), remember to call os.wait() to collect their
+exit status.
+
+
+
+Modules
+=======
+
+courier.config:
+
+defaultdomain()
+    Return Courier's "defaultdomain" value.
+
+    Call this function with no arguments.
+
+me()
+    Return Courier's "me" value.
+
+    Call this function with no arguments.
+
+locallowercase()
+    Return True if the locallowercase file exists, and False otherwise.
+
+dsnfrom()
+    Return Courier's "dsnfrom" value.
+
+    Call this function with no arguments.
+
+getAlias(address)
+    Return a list of addresses to which the address argument will expand.
+
+    If no alias matches the address argument, None will be returned.
+
+getBlockVal(ip)
+    Return the value of the BLOCK setting in the access db.
+
+    The value will either be None, '', or another string which will be
+    sent back to a client to indicate that mail will not be accepted
+    from them.  The values None and '' indicate that the client is not
+    blocked.  The value '' indicates that the client is specifically
+    whitelisted from blocks.
+
+getSmtpaccessVal(key, ip)
+    Return a string from the smtpaccess database.
+
+    The value returned will be None if the IP is not found in the
+    database, or if the database value doesn't contain the key
+    argument.
+
+    The value returned will be '' if the IP is found, and database
+    value contains the key, but the key's value is empty.
+
+    Otherwise, the value returned will be a string.
+
+isHosteddomain(domain)
+    Return True if domain is a hosted domain, and False otherwise.
+
+    See the courier(8) man page for more information on hosted domains.
+
+isLocal(domain)
+    Return True if domain is "local", and False otherwise.
+
+    See the courier(8) man page for more information on local domains.
+
+isRelayed(ip)
+    Return a true or false value indicating the RELAYCLIENT setting in
+    the access db.
+
+isWhiteblocked(ip)
+    Return a true or false value indicating the BLOCK setting in the
+    access db.
+
+    If the client ip is specifically whitelisted from blocks in the
+    smtpaccess database, the return value will be true.  If the ip is
+    not listed, or the value in the database is not '', the return
+    value will be false.
+
+smtpaccess(ip)
+    Return the courier smtpaccess value associated with the IP address.
+
+getModuleConfig(moduleName)
+    Return a dictionary of config values.
+    
+    The function will attempt to parse "pythonfilter-modules.conf" in
+    "/etc" and "/usr/local/etc", and load the values from the
+    section matching the moduleName argument.  If the configuration
+    files aren't found, or a name was requested that is not found in
+    the config file, an empty dictionary will be returned.
+    
+    The values read from the configuration file will be passed to
+    eval(), so they must be valid python expressions.  They will be
+    returned to the caller in their evaluated form.
+    
+applyModuleConfig(moduleName, moduleNamespace)
+    Modify moduleNamespace with values from configuration file.
+    
+    This function will load configuration files using the 
+    getModuleConfig function, and will then add or replace any names
+    in moduleNamespace with the values from the configuration files.
+
+
+courier.control:
+
+addRecipient(controlFileList, recipient)
+    Add a recipient to a controlFileList set.
+
+    The recipient argument must contain a canonical address.  Local
+    aliases are not allowed.
+
+addRecipientData(controlFileList, recipientData)
+    Add a recipient to a controlFileList set.
+
+    The recipientData argument must contain the same information that
+    is normally returned by the getRecipientsData function for each
+    recipient.  Recipients should be added one at a time.
+
+delRecipient(controlFileList, recipient)
+    Remove a recipient from the list.
+
+    The recipient arg is a canonical address found in one of the
+    control files in controlFileList.
+
+    The first recipient in the controlFileList that exactly matches
+    the address given will be removed by way of marking that delivery
+    complete, successfully.
+
+    You should log all such removals so that messages are never
+    silently lost.
+
+delRecipientData(controlFileList, recipientData)
+    Remove a recipient from the list.
+
+    The recipientData arg is a list similar to the data returned by
+    getRecipientsData found in one of the control files in
+    controlFileList.
+
+    The first recipient in the controlFileList that exactly matches
+    the data given will be removed by way of marking that delivery
+    complete, successfully.
+
+    You should log all such removals so that messages are never
+    silently lost.
+
+getControlData(controlFileList)
+    Return a dictionary containing all of the data that was given to submit.
+
+    The dictionary will have the following elements:
+    's': The envelope sender
+    'f': The "Received-From-MTA" record
+    'e': The envid of this message, as specified in RFC1891, or None
+    't': Either 'F' or 'H', specifying FULL or HDRS in the RET parameter
+         that was given in the MAIL FROM command, as specified in RFC1891,
+         or None
+    'V': 1 if the envelope sender address should be VERPed, 0 otherwise
+    'U': The security level requested for the message
+    'u': The "message source" given on submit's command line
+    'r': The list of recipients, as returned by getRecipientsData
+
+    See courier/libs/comctlfile.h in the Courier source code, and the
+    submit(8) man page for more information.
+
+getLines(controlFileList, key, [maxLines])
+    Return a list of values in the controlFileList matching key.
+
+    "key" should be a one character string.  See the "Control Records"
+    section of Courier's Mail Queue documentation for a list of valid
+    control record keys.
+
+    If the "maxLines" argument is given, it must be a number greater
+    than zero.  No more values than indicated by this argument will
+    be returned.
+
+getRecipients(controlFileList)
+    Return a list of message recipients.
+
+    This list contains addresses in canonical format, after Courier's
+    address rewriting and alias expansion.
+
+getRecipientsData(controlFileList)
+    Return a list of lists with details about message recipients.
+
+    Each list in the list returned will have the following elements:
+    0: The rewritten address
+    1: The "original message recipient", as defined by RFC1891
+    2: Zero or more characters indicating DSN behavior.
+
+getSender(controlFileList)
+    Return the envelope sender.
+
+getSendersIP(controlFileList)
+    Return an IP address if one is found in the "Received-From-MTA" record.
+
+getSendersMta(controlFileList)
+    Return the "Received-From-MTA" record.
+
+    Courier's documentation indicates that this specifies what goes
+    into this header for DSNs generated due to this message.
+
+getAuthUser(controlFileList, bodyFile=None)
+    Return the username used during SMTP AUTH, if available.
+    
+    The return value with be a string containing the username used
+    for authentication during submission of the message, or None,
+    if authentication was not used.
+    
+    The arguments are requested with controlFileList first in order
+    to be more consistent with other functions in this module.
+    Courier currently stores auth info only in the message header,
+    so bodyFile will be examined for that information.  Should that
+    ever change, and controlFileList contain the auth info, older
+    filters will not break due to changes in this interface.  Filters
+    written after such a change in Courier will be able to omit the
+    bodyFile argument.
+
+
+courier.xfilter:
+
+class XFilter(filterName, bodyFile, controlFileList)
+    Modify messages in the Courier spool.
+
+    This class will load a specified message from Courier's spool and
+    allow you to modify it.  This is implemented by loading the
+    message as an email.Message object which will be resubmitted to
+    the spool.  If the new message is submitted, the original message
+    will be marked completed.  If the new message is not submitted,
+    no changes will be made to the original message.
+
+    Arguments:
+    filterName -- a name identifying the filter calling this class
+    bodyFile -- the same argument given to the doFilter function
+    controlFileList -- the same argument given to the doFilter function
+
+    The class will raise xfilter.InitError when instantiated if it
+    cannot open the bodyFile or any of the control files.  It will
+    raise xfilter.LoopError if the message headers indicate that the
+    message has already been filtered under the same filterName.  When
+    creating an XFilter object, you should catch xfilter.LoopError and
+    return without attempting to modify the message further.
+
+    After creating an instance of this class, use the getMessage
+    method to get the email.Message object created from the bodyFile.
+    Make any modifications required using the normal python functions
+    usable with that object.
+
+    When modifications are complete, call the XFilter object's submit
+    method to insert the new message into the spool.  If there is an
+    error submitting the modified message, xfilter.SubmitError will
+    be raised.  Otherwise, the modified message has been submitted,
+    and the recipients of the original message will be marked
+    complete.  If no exception is raised, return '050 Ok' to stop all
+    further filtering of the message by all courierfilters.  Because
+    modifying the message creates a new message in Courier's queue,
+    you must not reject a message that has been modified; it is no
+    longer possible to notify the sender that the message was
+    rejected.  Filters that modify messages should be run last.
+
+	This example adds a useless header to a message, using the XFilter
+	class:
+
+#!/usr/bin/python
+# testxfilter -- Courier filter which adds a useless header
+
+import sys
+import courier.xfilter
+
+# Record in the system log that this filter was initialized.
+sys.stderr.write('Initialized the "testxfilter" python filter\n')
+
+def doFilter(bodyFile, controlFileList):
+    """Add a new header to incoming mail."""
+    try:
+        mfilter = courier.xfilter.XFilter('testxfilter', bodyFile,
+                                          controlFileList)
+    except courier.xfilter.LoopError, e:
+        # LoopError indicates that we've already filtered this message.
+        return ''
+    mmsg = mfilter.getMessage()
+    mmsg['X-Test-Header'] = 'A new header!'
+    mfilter.submit()
+    # Return 250, no more filters should be run on this copy.
+    return '050 OK'
+

@@ -1,0 +1,13 @@
+include tests/configfiles/*
+include tests/queuefiles/*
+include tests/*.py
+include courier/*.py
+include filters/*.py
+include pythonfilter
+include pythonfilter.conf
+include pythonfilter-modules.conf
+include MANIFEST.in
+include COPYING
+include README
+include README.hacking
+include ChangeLog

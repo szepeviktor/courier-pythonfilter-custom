@@ -1,0 +1,254 @@
+#!/usr/bin/python
+# pythonfilter -- A python framework for Courier global filters
+# Copyright (C) 2006  Gordon Messmer <gordon@dragonsdawn.net>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+"""Use: filterctl start pythonfilter
+
+pythonfilter will be activated within the Courier configuration, and
+the courierfilter process will start the program.
+
+"""
+
+##############################
+##############################
+
+import os
+import sys
+import select
+import socket
+import thread
+import time
+import traceback
+import courier.config
+
+##############################
+# Config Options
+##############################
+
+# Set filter_all to 1 if you do not want users to be able to whitelist
+# specific senders
+filterAll = 1
+
+##############################
+# Initialize filter system
+##############################
+activeFilters = 0
+activeFiltersLock = thread.allocate_lock()
+if filterAll:
+    filterDir = 'allfilters'
+else:
+    filterDir = 'filters'
+filterSocketPath1 = '%s/%s/.pythonfilter' % (courier.config.localstatedir, filterDir)
+filterSocketPath = '%s/%s/pythonfilter' % (courier.config.localstatedir, filterDir)
+filterSocketChk1 = '%s/%s/pythonfilter' % (courier.config.localstatedir, 'filters')
+filterSocketChk2 = '%s/%s/pythonfilter' % (courier.config.localstatedir, 'allfilters')
+
+# See if fd #3 is open, indicating that courierfilter is waiting for us
+# to notify of init completion.
+try:
+    os.fstat(3)
+    notifyAfterInit = 1
+except:
+    notifyAfterInit = 0
+
+# Load filters
+filters = []
+# First, locate and open the configuration file.
+config = None
+try:
+    configDirs = ('/etc', '/usr/local/etc')
+    for x in configDirs:
+        if os.access('%s/pythonfilter.conf' % x, os.R_OK):
+            config = open('%s/pythonfilter.conf' % x)
+            break
+except IOError:
+    sys.stderr.write('Could not open config file for reading.\n')
+    sys.exit()
+if not config:
+    sys.stderr.write('Could not locate a configuration file in any of: %s\n' %
+                     configDirs)
+    sys.exit()
+# Read the lines from the configuration file and load any module listed
+# therein.  Ignore lines that begin with a hash character.
+for x in config.readlines():
+    if x[0] in '#\n':
+        continue
+    moduleName = x.strip()
+    try:
+        module = __import__('pythonfilter.%s' % moduleName)
+        components = moduleName.split('.')
+        for c in components:
+            module = getattr(module, c)
+    except ImportError:
+        sys.stderr.write('Module "%s" indicated in pythonfilter.conf does not exist.\n' %
+                         moduleName)
+        sys.exit()
+    if hasattr(module, 'initFilter'):
+        try:
+            module.initFilter()
+        except AttributeError:
+            # Log bad modules
+            error = sys.exc_info()
+            sys.stderr.write('Failed to run "initFilter" '
+                             'function from %s\n' %
+                             moduleName)
+            sys.stderr.write('Exception : %s:%s\n' %
+                             (error[0], error[1]))
+            sys.stderr.write(''.join(traceback.format_tb(error[2])))
+    try:
+        # Store the name of the filter module and a reference to its
+        # dofilter function in the "filters" array.
+        filters.append((moduleName, module.doFilter))
+    except AttributeError:
+        # Log bad modules
+        importError = sys.exc_info()
+        sys.stderr.write('Failed to load "doFilter" '
+                         'function from %s\n' %
+                         moduleName)
+        sys.stderr.write('Exception : %s:%s\n' %
+                         (importError[0], importError[1]))
+        sys.stderr.write(''.join(traceback.format_tb(importError[2])))
+
+# Setup socket for courierfilter connection if filters loaded
+# completely
+try:
+    # Remove stale sockets to prevent exceptions
+    try: os.unlink(filterSocketChk1)
+    except: pass
+    try: os.unlink(filterSocketChk2)
+    except: pass
+    try: os.unlink(filterSocketPath1)
+    except: pass
+    filterSocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    filterSocket.bind(filterSocketPath1)
+    os.rename(filterSocketPath1, filterSocketPath)
+    os.chmod(filterSocketPath, 0660)
+    filterSocket.listen(64)
+except:
+    # If the socket creation failed, remove sockets that might
+    # exist, so that courier will deliver mail.  It might be best
+    # to have courier *not* deliver mail when we fail, but that's
+    # not a step I'm ready to take.
+    try: os.unlink(filterSocketPath1)
+    except: pass
+    try: os.unlink(filterSocketPath)
+    except: pass
+    sys.stderr.write('pythonfilter failed to create socket in %s/%s\n' %
+                     (courier.config.localstatedir, filterDir))
+    sys.exit()
+
+# Close fd 3 to notify courierfilter that initialization is complete
+if notifyAfterInit:
+    os.close(3)
+
+
+##############################
+# Filter loop processing function
+##############################
+def processMessage(activeSocket):
+    # Create a file object from the socket so we can read from it
+    # using .readline()
+    activeSocketFile = activeSocket.makefile('r')
+    # Read content filename and control filenames from socket
+    bodyFile = activeSocketFile.readline().strip()
+    # Normalize file name:
+    if bodyFile[0] != '/':
+        bodyFile = courier.config.localstatedir + '/tmp/' + bodyFile
+    controlFileList = []
+    while 1:
+        controlFile = activeSocketFile.readline()
+        if controlFile == '\n':
+            break
+        # Normalize file name:
+        if controlFile[0] != '/':
+            controlFile = (courier.config.localstatedir + '/tmp/' +
+                           controlFile)
+        controlFileList.append(controlFile.strip())
+    # We have nothing more to read from the socket, so se can close
+    # the file object
+    activeSocketFile.close()
+    # Prepare a response message, which is blank initially.  If a filter
+    # decides that a message should be rejected, then it must return the
+    # reason as an SMTP style response: numeric value and text message.
+    # The response can be multiline.
+    replyCode = ''
+    for i_filter in filters:
+        # name = i_filter[0]
+        # function = i_filter[1]
+        try:
+            replyCode = i_filter[1](bodyFile, controlFileList)
+        except:
+            filterError = sys.exc_info()
+            sys.stderr.write('Uncaught exception in "%s" doFilter function: %s:%s\n' %
+                             (i_filter[0], filterError[0], filterError[1]))
+            sys.stderr.write(''.join(traceback.format_tb(filterError[2])))
+            replyCode = ''
+        if not isinstance(replyCode, str):
+            sys.stderr.write('"%s" doFilter function returned non-string\n' % i_filter[0])
+            replyCode = ''
+        if replyCode != '':
+            break
+    # If all modules are ok, accept message
+    #  else, write back error code and message
+    if replyCode == '':
+        activeSocket.send('200 Ok')
+    else:
+        activeSocket.send(replyCode)
+    # Acquire the lock and update the thread count.
+    activeFiltersLock.acquire()
+    global activeFilters
+    activeFilters = activeFilters - 1
+    activeFiltersLock.release()
+    activeSocket.close()
+
+
+##############################
+# Listen for connnections on socket
+##############################
+while 1:
+    try: readyFiles = select.select([sys.stdin, filterSocket], [], [])
+    except: continue
+    # If stdin raised an event, it was closed and we need to exit.
+    if sys.stdin in readyFiles[0]:
+        break
+    if filterSocket in readyFiles[0]:
+        try:
+            activeSocket, addr = filterSocket.accept()
+            # Now, hand off control to a new thread and continue listening
+            # for new connections
+            activeFiltersLock.acquire()
+            activeFilters = activeFilters + 1
+            # Spawn thread and pass filenames as args
+            thread.start_new_thread(processMessage, (activeSocket,) )
+            activeFiltersLock.release()
+        except:
+            # Take care of any potential problems after the above block fails
+            sys.stderr.write('pythonfilter failed to accept connection '
+                              'from courierfilter\n')
+            activeFiltersLock.release()
+
+
+##############################
+# Stop accepting connections when stdin closes, exit when filters are
+# complete
+##############################
+# Dispose of the unix socket
+filterSocket.close()
+os.unlink(filterSocketPath)
+while(activeFilters > 0):
+    # Wait for them all to finish
+    time.sleep(0.1)

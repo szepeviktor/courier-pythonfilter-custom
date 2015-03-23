@@ -1,0 +1,3 @@
+127.0.0.1:	allow,RELAYCLIENT
+192.168.1:	allow,BLOCK
+192.168.2:	allow,BLOCK=shoo
