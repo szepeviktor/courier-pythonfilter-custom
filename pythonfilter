@@ -96,8 +96,12 @@ for x in config.readlines():
         for c in components:
             module = getattr(module, c)
     except ImportError:
+        importError = sys.exc_info()
         sys.stderr.write('Module "%s" indicated in pythonfilter.conf does not exist.\n' %
                          moduleName)
+        sys.stderr.write('Exception : %s:%s\n' %
+                         (importError[0], importError[1]))
+        sys.stderr.write(''.join(traceback.format_tb(importError[2])))
         sys.exit()
     if hasattr(module, 'initFilter'):
         try:

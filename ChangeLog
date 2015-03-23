@@ -1,3 +1,26 @@
+2008-07-31 16:43  gordon
+
+	* courier-pythonfilter.spec, setup.py: Release 1.4
+
+2008-07-31 15:47  gordon
+
+	* courier-pythonfilter.spec: Don't use dist tag on systems where it
+	isn't defined.
+
+2008-07-31 15:36  gordon
+
+	* courier/xfilter.py: Improve loop detection.  Suggested by
+	Jérôme Blion.
+
+2008-07-25 14:41  gordon
+
+	* pythonfilter: Log traceback when failing to import filter module.
+
+2008-07-21 10:47  gordon
+
+	* courier-pythonfilter.spec: Improvements suggested by Alan
+	Milligan
+
 2008-07-18 10:06  gordon
 
 	* courier-pythonfilter.spec, setup.py: Release 1.3

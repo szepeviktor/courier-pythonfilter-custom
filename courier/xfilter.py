@@ -119,32 +119,40 @@ class XFilter:
             self.message = email.message_from_file(bfStream)
         except Exception, e:
             raise InitError('Internal failure parsing message data file: %s' % str(e))
-        # Check that message hasn't been filtered previously, to prevent loops
-        if 'X-Filtered-By' in self.message:
-            filters = self.message.get_all('X-Filtered-By')
-            if filterName in filters:
-                raise LoopError('Message has already been filtered by %s' % filterName)
-        # Add a marker to this message so that it's not filtered again.
-        self.message.add_header('X-Filtered-By', filterName)
         # Save the arguments
         self.filterName = filterName
         self.bodyFile = bodyFile
         self.controlFileList = controlFileList
+        # Raise an exception if this message has already been filtered locally.
+        self._checkLoops()
         # Parse the control files and save their data
         self.controlData = courier.control.getControlData(controlFileList)
 
+    def _loopMarker(self):
+        return '%d:%s' % (os.getppid(), self.filterName)
+
+    def _checkLoops(self):
+        if self._useLoopPrevention():
+            # Check that message hasn't been filtered previously, to prevent loops
+            if 'X-Filtered-By' in self.message:
+                marker = self._loopMarker()
+                filters = self.message.get_all('X-Filtered-By')
+                if marker in filters:
+                    raise LoopError('Message has already been filtered by %s' % filterName)
+
+    def _useLoopPrevention(self):
+        if courier.config.isMinVersion('0.57.1'):
+            return False
+        return True
 
     def getMessage(self):
         return self.message
 
-
     def setMessage(self, message):
         self.message = message
 
-
     def getControlData(self):
         return self.controlData
-
 
     def submitInject(self, source, recipients):
         def _submit_read_response(sOutput):
@@ -259,8 +267,10 @@ class XFilter:
         sOutput.close()
         os.wait()
 
-
     def oldSubmit(self):
+        # Add a marker to this message so that it's not filtered again.
+        self.message.add_header('X-Filtered-By', self._loopMarker())
+        # Inject the new message into the queue.
         self.submitInject('esmtp', self.controlData['r'])
         # Finally, if the message was accepted by submit, mark all of
         # the recipients still in the list as complete in the original
@@ -268,7 +278,6 @@ class XFilter:
         for x in self.controlData['r']:
             courier.control.delRecipientData(self.controlFileList, x)
         return '050 OK'
-
 
     def newSubmit(self):
         bfo = open(self.bodyFile, 'r+')
@@ -284,12 +293,11 @@ class XFilter:
         bfo.close()
         return ''
 
-
     def submit(self):
-        if courier.config.isMinVersion('0.57.1'):
-            return self.newSubmit()
-        else:
+        if self._useLoopPrevention():
             return self.oldSubmit()
+        else:
+            return self.newSubmit()
 
 
 class DummyXFilter(XFilter):

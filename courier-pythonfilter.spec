@@ -1,8 +1,8 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:      courier-pythonfilter
-Version:   1.3
-Release:   1
+Version:   1.4
+Release:   1%{?dist}
 Summary:   Python filtering architecture for the Courier MTA.
 
 Group:     Development/Libraries
@@ -12,6 +12,7 @@ Source0:   %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArchitectures: noarch
 
+BuildRequires: python
 Requires:  courier
 
 %description
@@ -29,7 +30,7 @@ python setup.py build
 
 %install
 rm -rf $RPM_BUILD_ROOT
-python setup.py install --root=$RPM_BUILD_ROOT
+python setup.py install --skip-build --root=$RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/pythonfilter/quarantine
 
 
@@ -43,7 +44,7 @@ if [ $1 -eq 1 ]; then
     type -p courier-config > /dev/null || exit 0
     libexecdir=$(courier-config | grep ^libexecdir | cut -f2 -d=)
     test -n "${libexecdir}" -a -d "${libexecdir}" || exit 0
-    ln -s /usr/bin/pythonfilter ${libexecdir}/filters
+    ln -s %{_bindir}/pythonfilter ${libexecdir}/filters
 fi
 
 %preun
