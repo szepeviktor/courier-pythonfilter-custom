@@ -21,6 +21,7 @@ import sys
 import thread
 import time
 import courier.control
+import courier.config
 
 
 # The rate is measured in messages / interval in minutes
@@ -32,6 +33,9 @@ interval = 1
 # will be removed from the lists.
 sendersPurgeInterval = 60 * 60 * 12
 
+# Throttle based on IPv4 /24 or IPv6 /48 network rather than an
+# individual address.
+limitNetwork = False
 
 def initFilter():
     courier.config.applyModuleConfig('ratelimit.py', globals())
@@ -60,10 +64,18 @@ def doFilter(bodyFile, controlFileList):
     except:
         return '451 Internal failure locating control files'
 
+    if limitNetwork:
+        if '.' in sender:
+            # For IPv4, use the first three octets
+            sender = sender[:sender.rindex('.')]
+        else:
+            # For IPv6, expand the address and then use the first three hextets
+            sender = courier.config.explodeIP6(sender)[:14]
+
     _sendersLock.acquire()
     try:
         now = int(time.time() / 60)
-    
+
         # Scrub the lists if it is time to do so.
         if now > (_sendersLastPurged + (sendersPurgeInterval / 60)):
             minAge = now - interval
@@ -71,7 +83,7 @@ def doFilter(bodyFile, controlFileList):
                 if age < minAge:
                     del _senders[age]
             _sendersLastPurged = now
-    
+
         # First, add this connection to the bucket:
         if not _senders.has_key(now):
             _senders[now] = {}
@@ -79,13 +91,13 @@ def doFilter(bodyFile, controlFileList):
             _senders[now][sender] = 1
         else:
             _senders[now][sender] = _senders[now][sender] + 1
-    
+
         # Now count the number of connections from this sender
         connections = 0
         for i in range(0, interval):
             if _senders.has_key(now - i) and _senders[now - i].has_key(sender):
                 connections = connections + _senders[now - i][sender]
-    
+
         # If the connection count is higher than the maxConnections setting,
         # return a soft failure.
         if connections > maxConnections:
