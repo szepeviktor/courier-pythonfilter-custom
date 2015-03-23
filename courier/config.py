@@ -82,6 +82,21 @@ def _setup():
         DNS.DiscoverNameServers()
 
 
+def _openDbm(path):
+    # If the DBM doesn't exist, os.stat will raise an exception, and the
+    # logging code will be bypassed.
+    os.stat(path)
+    try:
+        dbm = anydbm.open(path, 'r')
+    except ImportError:
+        sys.stderr.write('Couldn\'t load python support for reading %s\n' % path)
+        raise
+    except anydbm.error:
+        sys.stderr.write('Error reading %s\n' % path)
+        raise
+    return dbm
+
+
 def isMinVersion(minVersion):
     """Check for minumum version of Courier.
 
@@ -215,8 +230,8 @@ def isHosteddomain(domain):
 
     """
     try:
-        hosteddomains = anydbm.open('%s/hosteddomains.dat' % sysconfdir, 'r')
-    except anydbm.error:
+        hosteddomains = _openDbm('%s/hosteddomains.dat' % sysconfdir)
+    except:
         return 0
     if hosteddomains.has_key(domain):
         return 1
@@ -242,8 +257,8 @@ def getAlias(address):
     else:
         address = '%s@%s' % (address, me())
     try:
-        aliases = anydbm.open('%s/aliases.dat' % sysconfdir, 'r')
-    except anydbm.error:
+        aliases = _openDbm('%s/aliases.dat' % sysconfdir)
+    except:
         return None
     if aliases.has_key(address):
         return aliases[address].strip().split('\n')
@@ -262,9 +277,8 @@ def smtpaccess(ip):
         return None
     # Next, open the smtpaccess database for ip lookups
     try:
-        smtpdb = anydbm.open(sysconfdir + '/smtpaccess.dat', 'r')
+        smtpdb = _openDbm(sysconfdir + '/smtpaccess.dat')
     except:
-        sys.stderr.write('Couldn\'t open smtpaccess.dat in %s\n' % sysconfdir)
         return None
     # Search for a match, most specific to least, and return the
     # first match.

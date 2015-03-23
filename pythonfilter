@@ -97,7 +97,8 @@ for x in config.readlines():
             module = getattr(module, c)
     except ImportError:
         importError = sys.exc_info()
-        sys.stderr.write('Module "%s" indicated in pythonfilter.conf does not exist.\n' %
+        sys.stderr.write('Module "%s" indicated in pythonfilter.conf could not be loaded.'
+                         '  It may be missing, or one of the modules that it requires may be missing.\n' %
                          moduleName)
         sys.stderr.write('Exception : %s:%s\n' %
                          (importError[0], importError[1]))

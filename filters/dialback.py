@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
-import DNS
 import errno
+import md5
 import os
 import select
 import smtplib
@@ -27,6 +27,7 @@ import sys
 import time
 import courier.config
 import TtlDb
+import DNS
 
 
 # The good/bad senders lists will be scrubbed at the interval indicated
@@ -80,6 +81,7 @@ def doFilter(bodyFile, controlFileList):
     if sender == '':
         # Null sender is allowed as a non-fatal error
         return ''
+    senderMd5 = md5.new(sender)
 
     _goodSenders.purge()
     _badSenders.purge()
@@ -88,16 +90,16 @@ def doFilter(bodyFile, controlFileList):
     # status.
     _goodSenders.lock()
     try:
-        if _goodSenders.has_key(sender):
-            _goodSenders[sender] = time.time()
+        if _goodSenders.has_key(senderMd5):
+            _goodSenders[senderMd5] = time.time()
             # Lock will be released in "finally" clause.
             return ''
     finally:
         _goodSenders.unlock()
     _badSenders.lock()
     try:
-        if _badSenders.has_key(sender):
-            _badSenders[sender] = time.time()
+        if _badSenders.has_key(senderMd5):
+            _badSenders[senderMd5] = time.time()
             # Lock will be released in "finally" clause.
             return '517 Sender does not exist: %s' % sender
     finally:
@@ -180,7 +182,7 @@ def doFilter(bodyFile, controlFileList):
                 # Success!  Mark this user good, and stop testing.
                 _goodSenders.lock()
                 try:
-                    _goodSenders[sender] = time.time()
+                    _goodSenders[senderMd5] = time.time()
                 finally:
                     _goodSenders.unlock()
                 filterReply = ''
@@ -189,7 +191,7 @@ def doFilter(bodyFile, controlFileList):
                 # Mark this user bad and stop testing.
                 _badSenders.lock()
                 try:
-                    _badSenders[sender] = time.time()
+                    _badSenders[senderMd5] = time.time()
                 finally:
                     _badSenders.unlock()
                 filterReply = '517-MX server %s said:\n' \

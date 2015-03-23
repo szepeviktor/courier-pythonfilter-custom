@@ -50,6 +50,7 @@ class TtlDbSQL:
     """Wrapper for SQL db containing tokens with a TTL."""
 
     dbapi_name = None
+    paramstyle = None
     create_statement = 'CREATE TABLE %s (id CHAR(64) NOT NULL, value BIGINT NOT NULL, PRIMARY KEY(id))'
     purge_statement = 'DELETE FROM %s WHERE value < $1'
     select_statement = 'SELECT value FROM %s WHERE id = $1'
@@ -63,6 +64,11 @@ class TtlDbSQL:
         if self.dbapi_name is None:
             raise OpenError('Do not use TtlDbSQL directly.  Subclass and define "dbapi".')
         self.dbapi = __import__(self.dbapi_name)
+        # This allows a subclass to override the SQL module's own
+        # paramstyle setting, especially for modules like MySQL
+        # which support multiple styles.
+        if self.paramstyle is None:
+            self.paramstyle = self.dbapi.paramstyle
         self.tablename = name
         self._connect()
         # The db will be scrubbed at the interval indicated in seconds.
@@ -98,10 +104,10 @@ class TtlDbSQL:
     def _dbExec(self, query, params=None, reconnect=True):
         exec_params = None
         if params:
-            if self.dbapi.paramstyle == 'numeric':
+            if self.paramstyle == 'numeric':
                 exec_params = [x[1] for x in params]
-            elif(self.dbapi.paramstyle == 'pyformat'
-                 or self.dbapi.paramstyle == 'named'):
+            elif(self.paramstyle == 'pyformat'
+                 or self.paramstyle == 'named'):
                 exec_params = dict(params)
         try:
             c = self.db.cursor()
@@ -196,6 +202,34 @@ class TtlDbPsycopg2(TtlDbSQL):
     delete_statement = 'DELETE FROM %s WHERE id = %%(id)s'
 
 
+class TtlDbMySQL(TtlDbPsycopg2):
+    """Wrapper for SQL db containing tokens with a TTL."""
+
+    dbapi_name = 'MySQLdb'
+    paramstyle = 'pyformat'
+
+    def _connect(self):
+        dbConfig = courier.config.getModuleConfig('TtlDb')
+        try:
+            # MySQLdb requires a set of parameters different than PEP 249.
+            self.db = self.dbapi.connect(user=dbConfig['user'],
+                                         passwd=dbConfig['password'],
+                                         host=dbConfig['host'],
+                                         port=int(dbConfig['port']),
+                                         db=dbConfig['db'])
+        except:
+            raise OpenError('Failed to open %s SQL db, check settings in pythonfilter-modules.conf' % (dbConfig['db']))
+        try:
+            try:
+                c = self.db.cursor()
+                c.execute(self.create_statement % self.tablename)
+                self.db.commit()
+            except:
+                self.db.rollback()
+        finally:
+            c.close()
+
+
 class TtlDbDbm:
     """Wrapper for dbm containing tokens with a TTL."""
     def __init__(self, name, TTL, PurgeInterval):
@@ -265,7 +299,8 @@ class TtlDbDbm:
 
 _dbmClasses = {'dbm': TtlDbDbm,
                'psycopg2': TtlDbPsycopg2,
-               'pg': TtlDbPg}
+               'pg': TtlDbPg,
+               'mysql': TtlDbMySQL}
 
 
 def TtlDb(name, TTL, PurgeInterval):

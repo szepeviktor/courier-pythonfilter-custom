@@ -1,3 +1,27 @@
+2009-01-18 19:47  gordon
+
+	* courier-pythonfilter.spec, setup.py: Release 1.6
+
+2009-01-18 19:44  gordon
+
+	* filters/dialback.py: Track md5 hash of addresses in dialback,
+	like other filters.
+
+2009-01-18 19:36  gordon
+
+	* pythonfilter: Offer more explanation in the import error message.
+
+2009-01-18 19:30  gordon
+
+	* pythonfilter-modules.conf, filters/TtlDb.py: MySQL support for
+	TtlDb.
+
+2009-01-10 23:04  gordon
+
+	* courier/config.py: Log a more specific error if anydbm lacks the
+	module to load a dbm file.  This is only likely to happen on Debian
+	derivatives.
+
 2009-01-02 21:18  gordon
 
 	* courier-pythonfilter.spec, setup.py: Release 1.5
