@@ -77,10 +77,10 @@ def sendNotice(message, address, sender=None):
     server = smtplib.SMTP('localhost')
     # Send the recipient a notice if notifyRecipient isn't
     # available, or if it is present and a true value.
-    if('notifyRecipient' not in config 
+    if('notifyRecipient' not in config
        or config['notifyRecipient']):
         server.sendmail('', address, msg)
-    if 'alsoNotify' in config:
+    if 'alsoNotify' in config and config['alsoNotify']:
         server.sendmail('', config['alsoNotify'], msg)
     server.quit()
 
@@ -113,7 +113,7 @@ def quarantine(bodyFile, controlFileList, explanation):
     ctlFileNum = 0
     _copyFile(bodyFile, quarantinePaths[0])
     for x in controlFileList:
-        ctlFilePath = '%s/C%s%s' % (config['dir'], id, ctlFileExt) 
+        ctlFilePath = '%s/C%s%s' % (config['dir'], id, ctlFileExt)
         ctlFileNum += 1
         ctlFileExt = '.%s' % ctlFileNum
         _copyFile(x, ctlFilePath)
@@ -127,9 +127,10 @@ def quarantine(bodyFile, controlFileList, explanation):
     # Prepare notice for recipients of quarantined message
     # Some sites would prefer that only admins release messages from the
     # quarantine.
-    if('userRelease' in config 
-       and config['userRelease'] == 0 
-       and 'alsoNotify' in config):
+    if('userRelease' in config
+       and config['userRelease'] == 0
+       and 'alsoNotify' in config
+       and config['alsoNotify']):
         release = config['alsoNotify']
     else:
         release = 'quarantine-%s-%s@%s' % (config['siteid'],
@@ -155,7 +156,7 @@ def quarantine(bodyFile, controlFileList, explanation):
 This message will be held in the quarantine until %s.
 After that time, it will no longer be possible to release the message.
 
-The message appears to have come from %s, although 
+The message appears to have come from %s, although
 this address could have been forged and should not be trusted.  The
 message subject was "%s".
 
@@ -205,7 +206,7 @@ def release(requestedId, address):
             qmsg.submitInject('local', [x])
             return
     # If no address matched, alert the user that the request was invalid.
-    sendFailureNotice(requestedId, address) 
+    sendFailureNotice(requestedId, address)
 
 
 def purge():

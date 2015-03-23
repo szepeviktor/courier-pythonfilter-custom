@@ -39,12 +39,15 @@ except ImportError:
     import pyclamd
     def scanMessage(bodyFile, controlFileList):
         try:
-            pyclamd.init_unix_socket(localSocket)
-            avresult = pyclamd.scan_file(bodyFile)
+            clamd = pyclamd.ClamdUnixSocket(localSocket)
+            avresult = clamd.scan_file(bodyFile)
         except Exception, e:
-            return "430 " + str(e)
+            return "430 Virus scanner error: " + str(e)
         if avresult != None and avresult.has_key(bodyFile):
-            return handleVirus(bodyFile, controlFileList, avresult[bodyFile])
+            if avresult[bodyFile][0] == 'FOUND':
+                return handleVirus(bodyFile, controlFileList, avresult[bodyFile][1])
+            else:
+                return "430 Virus scanner error: " + avresult[bodyFile][1]
         return ''
 
 

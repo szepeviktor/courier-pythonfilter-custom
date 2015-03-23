@@ -2,7 +2,7 @@
 %define expect_egg_info %(%{__python} -c "import distutils.command.install_egg_info" > /dev/null 2>&1 && echo 1 || echo 0)
 
 Name:      courier-pythonfilter
-Version:   1.7
+Version:   1.8
 Release:   1%{?dist}
 Summary:   Python filtering architecture for the Courier MTA.
 

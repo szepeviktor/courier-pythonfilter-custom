@@ -1,0 +1,99 @@
+#!/usr/bin/python
+# dropmsg -- Removes messages from Courier queue without notice.
+# Copyright (C) 2012  Gordon Messmer <gordon@dragonsdawn.net>
+#
+# This file is part of pythonfilter.
+#
+# pythonfilter is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# pythonfilter is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
+
+import getopt
+import os
+import sys
+
+import courier.control
+import courier.config
+
+quarantine = os.path.join(courier.config.localstatedir, 'quarantine')
+
+
+def usage():
+    print '''Use: dropmsg [-a authentication] [-i IP address] [-s email address]
+    The local system's queue will be walked.  Messages matching any given criteria will
+    be moved to a quarantine (%s).  At least one argument is required.
+    -a: Messages queued using the given username
+    -i: Messages queued from the given IP address
+    -s: Messages with the given envelope sender's address or DSNs to that address''' % quarantine
+
+
+
+def drop(cf, df):
+    qcf = os.path.join(quarantine, os.path.basename(cf))
+    qdf = os.path.join(quarantine, os.path.basename(df))
+    os.rename(cf,qcf)
+    os.rename(df,qdf)
+
+
+def search(auth, ip, sender):
+    for (dirpath, dirnames, filenames) in os.walk(os.path.join(courier.config.localstatedir, 'msgs')):
+        for c in filenames:
+            if c[0] == 'D':
+                # Skip data files
+                continue
+            d = 'D' + c[1:]
+            cf = os.path.join(dirpath, c)
+            df = os.path.join(dirpath, d)
+
+            if auth:
+                cauth = courier.control.getAuthUser((cf,), df)
+                if cauth in auth:
+                    drop(cf, df)
+            if ip:
+                cip = courier.control.getSendersIP((cf,))
+                if cip in ip:
+                    drop(cf, df)
+            if sender:
+                csender = courier.control.getSender((cf,))
+                if csender in sender:
+                    drop(cf, df)
+                if csender == '':
+                    crecipient = courier.control.getRecipients((cf,))
+                    if crecipient[0] in sender:
+                        drop(cf, df)
+
+
+if __name__ == '__main__':
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'a:i:s:')
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print str(err)
+        usage()
+        sys.exit(2)
+    if not opts:
+        usage()
+        sys.exit(2)
+
+    auth=[]
+    ip=[]
+    sender=[]
+
+    for o, a in opts:
+        if o == '-a':
+            auth.append(a)
+        if o == '-i':
+            ip.append(a)
+        if o == '-s':
+            sender.append(a)
+
+    search(auth, ip, sender)

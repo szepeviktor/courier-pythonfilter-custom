@@ -64,8 +64,8 @@ def getSendersMta(controlFileList):
         return None
 
 
-_sender_ipv4_re = re.compile('\[(?:::ffff:)?(\d*.\d*.\d*.\d*)\]')
-_sender_ipv6_re = re.compile('\[([0-9a-f:]*)\]')
+_sender_ipv4_re = re.compile('\[(?:::ffff:)?(\d*.\d*.\d*.\d*)\]\)$')
+_sender_ipv6_re = re.compile('\[([0-9a-f:]*)\]\)$')
 def getSendersIP(controlFileList):
     """Return an IP address if one is found in the "Received-From-MTA" record."""
     sender = getSendersMta(controlFileList)
@@ -327,11 +327,11 @@ def _checkHeader(header):
 
 def getAuthUser(controlFileList, bodyFile=None):
     """Return the username used during SMTP AUTH, if available.
-    
+
     The return value with be a string containing the username used
     for authentication during submission of the message, or None,
     if authentication was not used.
-    
+
     The arguments are requested with controlFileList first in order
     to be more consistent with other functions in this module.
     Courier currently stores auth info only in the message header,
@@ -340,7 +340,7 @@ def getAuthUser(controlFileList, bodyFile=None):
     filters will not break due to changes in this interface.  Filters
     written after such a change in Courier will be able to omit the
     bodyFile argument.
-    
+
     """
     try:
         bfStream = open(bodyFile)

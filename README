@@ -258,8 +258,11 @@ by the alsoNotify setting, that address will still be notified.  If
 notifyRecipient is set to 0, and no alsoNotify setting is available,
 then quarantines will be completely silent.
 
-After configuring the quaranting settings, you'll also need to
-create an alias which users can use to release messages.  The alias
+After configuring the quaranting settings, you'll also need to create an
+alias which users can use to release messages.  The address given to
+users will use the system's hostname or Courier's "me" configuration
+file. See the man page for 'courier' for more information.  That
+hostname must appear in the "locals" configuration file.  The alias
 should be set up as a dot-courier file beginning with "quarantine",
 followed by a hyphen and then the siteid, ending with "-default".
 For example:
