@@ -29,7 +29,12 @@ _timeoutRead = 30
 
 class AuthDaemonError(Exception):
     """Base class for exceptions in this module."""
-    pass
+
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
 
 
 class IoError(AuthDaemonError):
@@ -37,8 +42,7 @@ class IoError(AuthDaemonError):
     
     Attributes:
         message -- explanation of the error"""
-    def __init__(self, message):
-        self.message = message
+    pass
 
 
 class KeyError(AuthDaemonError):
@@ -46,8 +50,7 @@ class KeyError(AuthDaemonError):
     
     Attributes:
         message -- explanation of the error"""
-    def __init__(self, message):
-        self.message = message
+    pass
 
 
 def _connect():

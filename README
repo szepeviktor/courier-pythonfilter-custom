@@ -169,6 +169,83 @@ quota: checks the maildir quota for each local recipient, and temporarily
 refuses messages if any recipient is over quota.
 
 
+TtlDb
+=====
+
+The TtlDb module has experimental support for PostgreSQL.  This support
+can be useful if you are clustering Courier servers and need a shared
+storage for TtlDb.
+
+To enable SQL support, open pythonfilter-modules.conf in your text editor
+and locate the TtlDb section.  Change "type" to 'pg' for PostgreSQL, and
+set appropriate values for the other settings.
+
+[TtlDb]
+type = 'pg'
+host = 'localhost'
+port = '5432'
+db = 'pythonfilter'
+user = 'pythonfilter'
+password = 'password'
+
+
+Quarantine
+==========
+
+pythonfilter's quarantine support allows filters to move a message
+into the quarantine, rather than deliver it to the intended recipients.
+Each recipient will, instead, get a notice with some basic details
+about the message and instructions on releasing the message from the
+quarantine.  In most cases, you must make sure that Courier's 
+"enablefiltering" file does not include "local".  If you filter local
+mail, the filter which quarantined a message is likely to simply
+quarantine it again when users attempt to release it.
+
+The quarantine module needs a directory where it can store the data
+and control files.  You must create a directory writable by the user
+as which Courier runs if you plan to use any module that quarantines
+messages.
+
+# mkdir /var/state/pythonfilter/quarantine
+# chown daemon:daemon /var/state/pythonfilter/quarantine
+
+The configuration file must contain the location of this directory,
+as well as an indication of how long messages should be held in the
+quarantine.  Open pythonfilter-modules.conf in your text editor and
+locate the Quarantine section.
+
+[Quarantine]
+siteid = '7d35f0b0-4a07-40a6-b513-f28bd50476d3'
+dir = '/var/state/pythonfilter/quarantine'
+days = 14
+
+The siteid value is a randomly generated ID for your site.  It helps
+prevent forged requests to release items from the quarantine.  On
+Linux systems, the "uuidgen" program can be used to generate an ID.
+If "uuidgen" isn't available, any string will do.
+
+Set the dir value to the path which you created earlier.  Set days
+according to your preference for quarantine lifetime.
+
+After configuring the quaranting settings, you'll also need to
+create an alias which users can use to release messages.  The alias
+should be set up as a dot-courier file beginning with "quarantine",
+followed by a hyphen and then the siteid, ending with "-default".
+For example:
+
+/etc/courier/aliasdir/.courier-quarantine-7d35f0b0-4a07-40a6-b513-f28bd50476d3-default
+
+This file should contain a single delivery instruction:
+
+| /usr/bin/pythonfilter-quarantine -release
+
+Finally, you will need a scheduled job to clean out the quarantine
+periodically.  The job will delete the quarantine files and clean
+up the database of IDs.  Once a day, you should run:
+
+/usr/bin/pythonfilter-quarantine -purge
+
+
 Use
 ===
 

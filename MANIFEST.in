@@ -4,6 +4,7 @@ include tests/*.py
 include courier/*.py
 include filters/*.py
 include pythonfilter
+include pythonfilter-quarantine
 include pythonfilter.conf
 include pythonfilter-modules.conf
 include MANIFEST.in

@@ -23,6 +23,20 @@ import courier.config
 import courier.control
 
 
+def _parsequota(quota):
+    bytes = 0
+    messages = 0
+    qbits = [ x.strip() for x in quota.split(',') ]
+    for qbit in qbits:
+        if qbit[-1] == 'S':
+            bytes = long(qbit[:-1])
+        elif qbit[-1] == 'C':
+            messages = long(qbit[:-1])
+        else:
+            raise ValueError('quota string "%s" not parseable' % quota)
+    return (bytes, messages)
+
+
 def _checkQuota(addr):
     try:
         userInfo = courier.authdaemon.getUserInfo('smtp', addr)
@@ -40,18 +54,17 @@ def _checkQuota(addr):
         maildirsize = os.path.join(userInfo['HOME'], 'Maildir', 'maildirsize')
     try:
         sizeFile = open(maildirsize, 'r')
-        (quotaSizeStr, quotaCountStr) = sizeFile.readline().strip().split(',')
-        quotaSize = long(quotaSizeStr[:-1])
-        quotaCount = long(quotaCountStr[:-1])
+        (quotaSize, quotaCount) = _parsequota(sizeFile.readline())
         mailSize = 0
         mailCount = 0
         quotaLine = sizeFile.readline()
         while quotaLine:
             (lineSize, lineCount) = quotaLine.strip().split()
-            mailSize = mailSize + long(lineSize)
-            mailCount = mailCount + long(lineCount)
+            mailSize += long(lineSize)
+            mailCount += long(lineCount)
             quotaLine = sizeFile.readline()
-        if (mailSize >= quotaSize) or (mailcount >= quotaCount):
+        if ((quotaSize and mailSize >= quotaSize)
+            or (quotaCount and mailcount >= quotaCount)):
             return 'User "%s" is over quota' % addr
     except:
         return ''
@@ -67,13 +80,13 @@ def doFilter(bodyFile, controlFileList):
     """Reject mail if any recipient is over quota"""
     rcpts = courier.control.getRecipientsData(controlFileList)
     for x in rcpts:
-        (user, domain) = x.split('@', 1)
+        (user, domain) = x[0].split('@', 1)
         if courier.config.isLocal(domain):
             quotaError = _checkQuota(user)
             if quotaError:
-                return quotaError
+                return '421 %s' % quotaError
         elif courier.config.isHosteddomain(domain):
-            quotaError = _checkQuota('%s@%s' % (user, domain))
+            quotaError = _checkQuota(x)
             if quotaError:
                 return '421 %s' % quotaError
     return ''
@@ -87,4 +100,5 @@ if __name__ == '__main__':
     if not sys.argv[1:]:
         print 'Use:  quota.py <control file>'
         sys.exit(1)
+    initFilter()
     print doFilter('', sys.argv[1:])

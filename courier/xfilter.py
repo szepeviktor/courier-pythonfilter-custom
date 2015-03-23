@@ -37,6 +37,7 @@ _envLock = thread.allocate_lock()
 class XFilterError(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
 
@@ -125,7 +126,7 @@ class XFilter:
         return self.controlData
 
 
-    def oldSubmit(self):
+    def submitInject(self, source, recipients):
         def _submit_read_response(sOutput):
             # Read an SMTP style response from the submit program, and
             # return the assembled response.
@@ -189,7 +190,7 @@ class XFilter:
         submitArgs = [submitPath]
         if self.controlData['u']:
             submitArgs.append('-src=%s' % self.controlData['u'])
-        submitArgs.append('esmtp')
+        submitArgs.append(source)
         submitArgs.append(self.controlData['f'])
         _envLock.acquire()
         os.environ['RELAYCLIENT'] = ''
@@ -211,7 +212,7 @@ class XFilter:
         _submit_recv(sInput, sOutput)
 
         # Feed in each of the recipients
-        for x in self.controlData['r']:
+        for x in recipients:
             # If the canonical address starts with '".xalias/', it's an alias
             # in aliasdir that must be submited via its original address.
             if x[0].startswith('".xalias/'):
@@ -238,6 +239,9 @@ class XFilter:
         sOutput.close()
         os.wait()
 
+
+    def oldSubmit(self):
+        self.submitInject('esmtp', self.controlData['r'])
         # Finally, if the message was accepted by submit, mark all of
         # the recipients still in the list as complete in the original
         # message.

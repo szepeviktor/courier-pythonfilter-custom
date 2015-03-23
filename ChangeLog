@@ -1,3 +1,64 @@
+2008-03-19 21:03  gordon
+
+	* setup.py: Release 1.1
+
+2008-03-19 21:03  gordon
+
+	* README, courier/quarantine.py, courier/xfilter.py: Make the
+	quarantine module's "release" method use the "local" source, to
+	avoid filtering messages on release.
+
+2008-03-19 20:22  gordon
+
+	* pythonfilter-modules.conf, filters/clamav.py: Allow clamav filter
+	to quarantine messages.
+
+2008-03-19 20:06  gordon
+
+	* MANIFEST.in, README, pythonfilter-modules.conf,
+	pythonfilter-quarantine, setup.py, courier/quarantine.py,
+	courier/xfilter.py: Initial support for message quarantine.
+
+2008-03-17 17:33  gordon
+
+	* README: Add simple documentation for TtlDb's SQL support.
+
+2008-03-17 16:54  gordon
+
+	* courier/: authdaemon.py, xfilter.py: Fix exception definitions.
+
+2008-03-17 16:49  gordon
+
+	* filters/TtlDb.py, pythonfilter-modules.conf,
+	filters/auto_whitelist.py, filters/comeagain.py,
+	filters/dialback.py, filters/greylist.py, tests/testttldb.py,
+	tests/configfiles/pythonfilter-modules.conf: Initial revision of
+	experimental SQL TtlDb support.
+
+2008-01-04 21:50  gordon
+
+	* filters/: localsenders.py, whitelist_block.py,
+	whitelist_dnswl.py, attachments.py, auto_whitelist.py, clamav.py,
+	comeagain.py, deliveredto.py, dialback.py, greylist.py,
+	noduplicates.py, nosuccessdsn.py, quota.py, spamassassin.py,
+	whitelist_auth.py, whitelist_relayclients.py, whitelist_spf.py: Run
+	initFilter() before testing, pointed out by Jérôme Blion
+	<jerome.blion@free.fr>
+
+2008-01-04 21:38  gordon
+
+	* filters/spamassassin.py, pythonfilter-modules.conf,
+	filters/clamav.py: Additional configuration items, suggested by
+	Jérôme Blion <jerome.blion@free.fr>
+
+2007-12-12 15:01  gordon
+
+	* filters/quota.py: Another logic fix in quota filter.
+
+2007-12-12 14:55  gordon
+
+	* filters/quota.py: Fix up the quota filter.
+
 2007-12-09 21:17  gordon
 
 	* setup.py: Release 1.0

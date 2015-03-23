@@ -1,0 +1,69 @@
+#!/usr/bin/python
+# pythonfilter-quarantine -- quarantine manager for pythonfilter
+# Copyright (C) 2008  Gordon Messmer <gordon@dragonsdawn.net>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+"""Use: pythonfilter-quarantine [-release|-purge]
+
+When using -release from a dot-courier file, the pythonfilter-quarantine
+script will read the ID from the DEFAULT environment variable, and
+attempt to release that message from the quarantine, to the address in
+the SENDER environment variable.
+
+The -purge option will attempt to delete all expired messages from the
+quarantine.
+
+"""
+
+import os
+import sys
+import courier.quarantine
+
+
+def release():
+    try:
+        id = os.environ['DEFAULT']
+    except:
+        sys.stderr.write('Could not find the DEFAULT environment variable.\n')
+        sys.stderr.write('See the pythonfilter documentation for proper setup.\n')
+        sys.exit(78)
+    try:
+        sender = os.environ['SENDER']
+    except:
+        sys.stderr.write('Could not find the SENDER environment variable.\n')
+        sys.stderr.write('See the pythonfilter documentation for proper setup.\n')
+        sys.exit(78)
+    courier.quarantine.release(id, sender)
+
+
+def usage():
+    print __doc__
+    sys.exit(64)
+
+
+def main():
+    if len(sys.argv) != 2:
+        usage()
+    elif sys.argv[1] == '-purge':
+        courier.quarantine.purge()
+    elif sys.argv[1] == '-release':
+        release()
+    else:
+        usage()
+
+
+if __name__ == '__main__':
+    main()

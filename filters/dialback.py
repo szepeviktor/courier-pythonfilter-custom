@@ -88,7 +88,7 @@ def doFilter(bodyFile, controlFileList):
     _goodSenders.lock()
     try:
         if _goodSenders.has_key(sender):
-            _goodSenders[sender] = str(time.time())
+            _goodSenders[sender] = time.time()
             # Lock will be released in "finally" clause.
             return ''
     finally:
@@ -96,7 +96,7 @@ def doFilter(bodyFile, controlFileList):
     _badSenders.lock()
     try:
         if _badSenders.has_key(sender):
-            _badSenders[sender] = str(time.time())
+            _badSenders[sender] = time.time()
             # Lock will be released in "finally" clause.
             return '517 Sender does not exist: %s' % sender
     finally:
@@ -179,7 +179,7 @@ def doFilter(bodyFile, controlFileList):
                 # Success!  Mark this user good, and stop testing.
                 _goodSenders.lock()
                 try:
-                    _goodSenders[sender] = str(time.time())
+                    _goodSenders[sender] = time.time()
                 finally:
                     _goodSenders.unlock()
                 filterReply = ''
@@ -188,7 +188,7 @@ def doFilter(bodyFile, controlFileList):
                 # Mark this user bad and stop testing.
                 _badSenders.lock()
                 try:
-                    _badSenders[sender] = str(time.time())
+                    _badSenders[sender] = time.time()
                 finally:
                     _badSenders.unlock()
                 filterReply = '517-MX server %s said:\n' \
@@ -366,4 +366,5 @@ if __name__ == '__main__':
     if not sys.argv[1:]:
         print 'Use:  dialback.py <control file>'
         sys.exit(1)
+    initFilter()
     print doFilter('', sys.argv[1:])

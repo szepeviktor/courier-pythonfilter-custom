@@ -73,4 +73,5 @@ if __name__ == '__main__':
     if len(sys.argv) != 2:
         print "Usage: attachments.py <message_body_file>"
         sys.exit(0)
+    initFilter()
     print doFilter(sys.argv[1], [])
