@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with pythonfilter.  If not, see <http://www.gnu.org/licenses/>.
 
-import anydbm
 import md5
 import sys
 import time
@@ -44,8 +43,6 @@ sendersPassedTTL = 60 * 60 * 24 * 36
 sendersNotPassedTTL = 60 * 60 * 24 
 greylistTime = 300
 
-_whitelistDir = '/var/lib/pythonfilter'
-
 _IPv4Regex = re.compile('^(\d+\.\d+\.\d+)\.\d+$')
 
 
@@ -64,22 +61,6 @@ def initFilter():
         _sendersNotPassed = TtlDb.TtlDb('greylist_NotPassed', sendersNotPassedTTL, sendersPurgeInterval)
     except TtlDb.OpenError, e:
         sys.stderr.write('Could not open greylist TtlDb: %s\n' % e)
-        sys.exit(1)
-
-    try:
-        global _whitelistMailAddresses
-        global _whitelistDomains
-        global _whitelistIPAddresses
-        # messages which include these mail addresses either as sender or recipient
-        # should not be greylisted (could be your customer database)
-        _whitelistMailAddresses = anydbm.open(_whitelistDir + '/greylist_whitelistMailAddresses', 'c')
-        # messages which include these domains either in sender or recipient addresses
-        # should not be greylisted
-        _whitelistDomains = anydbm.open(_whitelistDir + '/greylist_whitelistDomains', 'c')
-        # messages from these IP addresses should not be greylisted
-        _whitelistIPAddresses = anydbm.open(_whitelistDir + '/greylist_whitelistIPAddresses', 'c')
-    except:
-        sys.stderr.write('Failed to open greylist db in %s, make sure that the directory exists\n' % _whitelistDir)
         sys.exit(1)
 
     # Record in the system log that this filter was initialized.
@@ -103,10 +84,6 @@ def doFilter(bodyFile, controlFileList):
     """
 
     sendersIP = courier.control.getSendersIP(controlFileList)
-    if _whitelistIPAddresses.has_key(sendersIP):
-        _Debug('allowing message from whitelisted IP address %s' % sendersIP)
-        return ''
-
     # Calculate the /24 network
     IPv4Match = _IPv4Regex.match(sendersIP)
     if(IPv4Match is None):
@@ -124,17 +101,6 @@ def doFilter(bodyFile, controlFileList):
         # Null sender is allowed as a non-fatal error
         return ''
     sender = sender.lower()
-
-    # Check the sender's address against the address whitelist.
-    if _whitelistMailAddresses.has_key(sender):
-        _Debug('allowing message from whitelisted sender address %s' % sender)
-        return ''
-
-    # Check the sender's domain against the domain whitelist.
-    tmpSplit = sender.split('@')
-    if len(tmpSplit) == 2 and _whitelistDomains.has_key(tmpSplit[1]):
-        _Debug('allowing message from sender in whitelisted domain %s' % sender)
-        return ''
 
     _sendersPassed.purge()
     _sendersNotPassed.purge()
@@ -158,17 +124,6 @@ def doFilter(bodyFile, controlFileList):
 
     for recipient in courier.control.getRecipients(controlFileList):
         recipient = recipient.lower()
-
-        # Check the recipient's address against the address whitelist.
-        if _whitelistMailAddresses.has_key(recipient):
-            _Debug('allowing message sent to whitelisted recipient address %s' % recipient)
-            return ''
-
-        # Check the recipient's domain against the domain whitelist.
-        tmpSplit = recipient.split('@')
-        if len(tmpSplit) == 2  and _whitelistDomains.has_key(tmpSplit[1]):
-            _Debug('allowing message sent to recipient in whitelisted domain %s' % recipient)
-            return ''
 
         correspondents = senderMd5.copy()
         correspondents.update(recipient)
@@ -211,83 +166,14 @@ def doFilter(bodyFile, controlFileList):
         return('451 4.7.1 Greylisting in action, please come back in %s' % time.strftime("%H:%M:%S", time.gmtime(biggestTimeToGo)))
 
 
-def _doDumpDb(db):
-    if db not in ('MailAddresses', 'Domains', 'IPAddresses'):
-        sys.stderr.write('Second argument must be one of: MailAddresses, Domains, IPAddresses\n')
-        sys.exit(1)
-    try:
-        hash = anydbm.open(_whitelistDir + '/greylist_whitelist' + db, 'n')
-    except:
-        sys.stderr.write('Failed to open the %s DB.\n' % db)
-        sys.exit(1)
-    for key in hash.keys():
-        print key + "\t" + hash[key]
-
-
-def _doImportFile(db, inputFile):
-    if db not in ('MailAddresses', 'Domains', 'IPAddresses'):
-        sys.stderr.write('Second argument must be one of: MailAddresses, Domains, IPAddresses\n')
-        sys.exit(1)
-    try:
-        hash = anydbm.open(_whitelistDir + '/greylist_whitelist' + db, 'n')
-    except:
-        sys.stderr.write('Failed to open the  %s DB.\n' % db)
-        sys.exit(1)
-    try:
-        ifo = open(inputFile, 'r')
-    except:
-        sys.stderr.write('Failed to open the given file %s\n' % inputFile)
-        sys.exit(1)
-    for line in ifo.readlines():
-        # strip trailing newline
-        line = line.strip()
-        pair = line.split('\t', 1)
-        if len(pair) == 1:
-            hash[pair[0]] = ''
-        else:
-            hash[pair[0]] = pair[1]
-
-
 if __name__ == '__main__':
     # For debugging, you can create a file that contains one line,
     # beginning with an 's' character, followed by an email address
     # and more lines, beginning with an 'r' character, for each
     # recipient.  Run this script with the name of that file as an
     # argument, and it'll validate that email address.
-    def _printHelp():
-        print """Use: greylist.py test <control file>
-     greylist.py dump [MailAddresses,Domains,IPAddresses]
-     greylist.py import [MailAddresses,Domains,IPAddresses] <whitelist file>
-    
-"test" will read a file formatted like Courier's control files and 
-print out the SMTP response that would be generated by the filter.
-
-"dump" will read the contents of a diven database file and print all
-of its key/value pairs.  It can be used to save the contents of one
-of the existing DBs so that it can be modified and then imported.
-
-"import" will read the contents of the given file and add
-the values listed to the named whitelist DB.  The greylist 
-documentation recommends against whitelisting Domains or MailAddresses
-because they are easily forged.  Whitelist senders' IPAddresses 
-instead.  The Domains and MailAddresses whitelists apply to both
-senders and recipients; whitelisting a local user may allow spammers
-to use that address as a "sender" to bypass the greylist controls.
-It will also bypass the controls for other users if a message is
-sent to a whitelisted user and non-whitelisted users.
-The import is a destructive operation.  The existing list will be 
-replaced.  Make sure that the file that you're importing contains all
-of the values that you need.  The filter must not be running during 
-an import operation.\n"""
-        sys.exit(1)
     if not sys.argv[1:]:
-        _printHelp()
-    elif sys.argv[1] == 'dump' and len(sys.argv) == 3:
-        _doDumpDb(sys.argv[2])
-    elif sys.argv[1] == 'import' and len(sys.argv) == 4:
-        _doImportFile(sys.argv[2], sys.argv[3])
-    elif sys.argv[1] == 'test' and len(sys.argv) >= 3:
-        initFilter()
-        print doFilter('', sys.argv[2:])
-    else:
-        _printHelp()
+        print 'Use: greylist.py <control file>'
+        sys.exit(1)
+    initFilter()
+    print doFilter('', sys.argv[1:])

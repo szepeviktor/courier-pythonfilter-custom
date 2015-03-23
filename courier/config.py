@@ -343,6 +343,8 @@ def getModuleConfig(moduleName):
     try:
         cp.read(_standardConfigPaths)
         ci = cp.items(moduleName)
+    except ConfigParser.NoSectionError:
+        ci = {}
     except Exception, e:
         sys.stderr.write('error parsing config module: %s, exception: %s\n' % (moduleName, str(e)))
         ci = {}

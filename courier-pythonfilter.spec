@@ -1,7 +1,7 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:      courier-pythonfilter
-Version:   1.2
+Version:   1.3
 Release:   1
 Summary:   Python filtering architecture for the Courier MTA.
 

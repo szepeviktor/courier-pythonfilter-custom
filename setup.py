@@ -6,7 +6,7 @@ import sys
 from distutils.core import setup
 
 setup(name="courier-pythonfilter",
-      version="1.2",
+      version="1.3",
       description="Python filtering architecture for the Courier MTA.",
       author="Gordon Messmer",
       author_email="gordon@dragonsdawn.net",

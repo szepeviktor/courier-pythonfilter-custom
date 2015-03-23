@@ -1,3 +1,23 @@
+2008-07-18 10:06  gordon
+
+	* courier-pythonfilter.spec, setup.py: Release 1.3
+
+2008-07-18 10:00  gordon
+
+	* courier/config.py: Don't log an error if the config section is
+	missing or commented.
+
+2008-07-17 15:01  gordon
+
+	* filters/greylist.py: Remove greylist-specific whitelisting
+	functions in favor of the external whitelist modules.
+
+2008-07-17 15:00  gordon
+
+	* courier/xfilter.py: Fix bug where contents of a filtered message
+	may be left dangling at the end of the modified version's data
+	file.
+
 2008-07-14 10:09  gordon
 
 	* courier-pythonfilter.spec, setup.py: Release 1.2
