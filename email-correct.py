@@ -237,7 +237,7 @@ def doFilter(bodyFile, controlFileList):
         try:
             xf.submit()
         except Exception as error:
-            sys.stderr.write(SELF + '.py[' + pid + '] Exception in XFilter.submit: %s; %s\n' % (str(type(error)), str(error)))
+            sys.stderr.write(SELF + '.py[' + pid + '] Exception in XFilter.submit: %s; %s\n' % (str(type(error).__name__), str(error)))
             bf = open('/tmp/' + SELF + '_bodyFile2.' + pid, 'w')
             bf.write(msg.as_string())
             bf.close()
