@@ -169,7 +169,7 @@ def check_htmlonly(msg, corrected):
         # English - Hungarian
         text_payload = 'No text part - Nincs szoveges resz'
         pid = str(os.getpid())
-        sys.stderr.write(SELF + '.py[' + pid + '] Exception in html2text: %s; %s; charset=%s\n' % (str(type(error)), str(error), str(charset)))
+        sys.stderr.write(SELF + '[' + pid + '] Exception in html2text: %s; %s; charset=%s\n' % (str(type(error)), str(error), str(charset)))
         bf = open('/tmp/' + SELF + '_bodyFile.' + pid, 'w')
         # Only the non-convertable (broken) HTML
         #bf.write(msg.as_string())
@@ -196,8 +196,8 @@ def check_htmlonly(msg, corrected):
 def initFilter():
     # No variables for this module yes
     ###TODO e.g. DEFAULT_CHARSET, path for exception body files
-    #courier.config.applyModuleConfig(SELF + '.py', globals())
-    sys.stderr.write('Initialized the "' + SELF + '.py" ' + __VERSION__ + ' python filter\n')
+    #courier.config.applyModuleConfig(SELF, globals())
+    sys.stderr.write('Initialized the "' + SELF + '" ' + __VERSION__ + ' python filter\n')
 
 def doFilter(bodyFile, controlFileList):
     corrected = []
@@ -237,13 +237,13 @@ def doFilter(bodyFile, controlFileList):
         try:
             xf.submit()
         except Exception as error:
-            sys.stderr.write(SELF + '.py[' + pid + '] Exception in XFilter.submit: %s; %s\n' % (str(type(error)), str(error)))
+            sys.stderr.write(SELF + '[' + pid + '] Exception in XFilter.submit: %s; %s\n' % (str(type(error)), str(error)))
             bf = open('/tmp/' + SELF + '_bodyFile2.' + pid, 'w')
             bf.write(msg.as_string())
             bf.close()
-        sys.stderr.write(SELF + '.py[' + pid + '] To: ' + to + ' corrected=' + ','.join(corrected) + '\n')
+        sys.stderr.write(SELF + '[' + pid + '] To: ' + to + ' corrected=' + ','.join(corrected) + '\n')
     elif debug:
-        sys.stderr.write(SELF + '.py[' + pid + '] To: ' + to + ' correct\n')
+        sys.stderr.write(SELF + '[' + pid + '] To: ' + to + ' correct\n')
 
     return ''
 
